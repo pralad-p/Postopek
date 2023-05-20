@@ -1,6 +1,6 @@
 #include <iostream>
 
 int main() {
-    std::cout << "Does signing work?" << std::endl;
+    std::cout << "Ok it should work now." << std::endl;
     return 0;
 }
