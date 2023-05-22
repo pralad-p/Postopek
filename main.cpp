@@ -55,11 +55,11 @@ int main() {
         if (state.state)
             base_style = base_style | color(Color::Green);
         else
-            base_style = base_style | color(Color::Red);
+            base_style = base_style;
 
         return hbox({
                             text(L"[") | base_style,
-                            text(state.active ? L"x" : L" ") | base_style,
+                            text(state.state ? L"✅" : L" ") | base_style,
                             text(L"] ") | base_style,
                             text(state.label) | base_style,
                     });
@@ -73,7 +73,7 @@ int main() {
         std::string time_str = getCurrentTime();
         return text(time_str) | color(Color::CornflowerBlue) | bold | center | border;
     });
-
+    auto filler_component = Renderer([] { return filler(); });
     auto container = Container::Vertical({
                                                  timeRenderer,
                                                  hoverable_checkbox,
@@ -84,11 +84,16 @@ int main() {
                                                          return text(L"");  // return empty text element
                                                      }
                                                  }),
+                                                 filler_component,
                                                  Container::Horizontal({
-                                                                               input_component | flex,
+                                                                               input_component | borderRounded,
                                                                                update_button
-                                                                       })
+                                                                       }),
+                                                 Renderer([] {
+                                                     return text("qqq ▶️ Quit");
+                                                 })
                                          });
+
 
     auto quit_engine = Make<EngineWrapper>(container, [&screen]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
