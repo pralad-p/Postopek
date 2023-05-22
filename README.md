@@ -16,19 +16,22 @@ time-tracking feature. It was made to be minimalist and allows to focus on one t
 ## Installation
 
 *To be done*
+
 (Talk about how to install your project, any pre-requisites that need to be installed, and any environment setup steps)
 
 ## Usage
 
 *To be done*
+
 (Provide instructions on how to use the application, perhaps with example commands or screenshots)
 
 ## Project Structure
 
 *To be done*
+
 The project is structured as follows:
 
-- 'src': Contains source and header files
+- `src`: Contains source and header files
 - `main.cpp`: Serves as the entry point
 
 ## Features
@@ -47,14 +50,17 @@ The project is structured as follows:
 ## Configuration
 
 *(To be completed)*
+
 (Talk about how to configure the application, if applicable)
 
 ## Contributing
 
 *(To be completed)*
+
 (Provide instructions on how others can contribute to your project)
 
 ## License
 
 *(To be completed)*
+
 (Include information about the license under which your project is distributed)
