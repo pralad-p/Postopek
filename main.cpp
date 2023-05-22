@@ -3,12 +3,13 @@
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "utils.h"
 
 using namespace ftxui;
 
-class ExitEngine : public ComponentBase {
+class EngineWrapper : public ComponentBase {
 public:
-    explicit ExitEngine(Component component, std::function<void()> quit_callback)
+    explicit EngineWrapper(Component component, std::function<void()> quit_callback)
             : component_(std::move(component)), quit_callback_(std::move(quit_callback)) {
         Add(component_);
     }
@@ -51,7 +52,13 @@ int main() {
     auto checkbox = Checkbox(&label, &checked);
     auto hoverable_checkbox = Hoverable(checkbox, &hover);
 
+    auto timeRenderer = Renderer([&] {
+        std::string time_str = getCurrentTime();
+        return text(time_str) | color(Color::CornflowerBlue) | bold | center | border;
+    });
+
     auto container = Container::Vertical({
+                                                 timeRenderer | flex,
                                                  hoverable_checkbox,
                                                  Renderer([&] {
                                                      if (hover) {
@@ -60,11 +67,25 @@ int main() {
                                                          return text(L"");  // return empty text element
                                                      }
                                                  }),
-                                                 input_component,
-                                                 update_button,
+                                                 Container::Horizontal({
+                                                                               input_component | flex,
+                                                                               update_button | flex
+                                                                       })
                                          });
 
-    auto quit_component = Make<ExitEngine>(container, screen.ExitLoopClosure());
-    screen.Loop(quit_component);
+    auto quit_engine = Make<EngineWrapper>(container, [&screen]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        screen.Exit();
+    });
+
+    // Run the application in a loop.
+    std::thread([&] {
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            screen.PostEvent(Event::Custom);
+        }
+    }).detach();
+
+    screen.Loop(quit_engine);
     return 0;
 }
