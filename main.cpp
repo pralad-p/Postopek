@@ -3,12 +3,14 @@
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "ftxui/component/component_options.hpp"
+#include "utils.h"
 
 using namespace ftxui;
 
-class ExitEngine : public ComponentBase {
+class EngineWrapper : public ComponentBase {
 public:
-    explicit ExitEngine(Component component, std::function<void()> quit_callback)
+    explicit EngineWrapper(Component component, std::function<void()> quit_callback)
             : component_(std::move(component)), quit_callback_(std::move(quit_callback)) {
         Add(component_);
     }
@@ -16,22 +18,21 @@ public:
 private:
     Component component_;
     std::function<void()> quit_callback_;
-    int q_counter = 0;  // Add a counter for 'q' presses
+    int q_counter = 0; // quitting variable
 
     bool OnEvent(Event event) override {
         if (event == Event::Character('q')) {
-            ++q_counter;
+            ++q_counter; // increment the global variable
             if (q_counter == 3) {  // Only exit when 'q' is pressed 3 times
                 quit_callback_();
                 return true;
             }
-        } else {
+        } else if (event.is_character()) {
             q_counter = 0;  // Reset the counter if any key other than 'q' is pressed
         }
         return component_->OnEvent(event);
     }
 };
-
 
 int main() {
     bool hover = false;
@@ -46,12 +47,35 @@ int main() {
     };
     auto update_button = Button("Update", update_hover_text);
 
-    auto screen = ScreenInteractive::FitComponent();
+    auto screen = ScreenInteractive::Fullscreen();
 
-    auto checkbox = Checkbox(&label, &checked);
+    auto checkbox_decorator = [](const EntryState &state) {
+        // You can modify this part to suit your needs.
+        std::function < Element(Element) > base_style = state.state ? inverted : nothing;
+        if (state.state)
+            base_style = base_style | color(Color::Green);
+        else
+            base_style = base_style;
+
+        return hbox({
+                            text(L"[") | base_style,
+                            text(state.state ? L"✅" : L" ") | base_style,
+                            text(L"] ") | base_style,
+                            text(state.label) | base_style,
+                    });
+    };
+    auto checkbox_option = CheckboxOption();
+    checkbox_option.transform = checkbox_decorator;
+    auto checkbox = Checkbox(&label, &checked, checkbox_option);
     auto hoverable_checkbox = Hoverable(checkbox, &hover);
 
+    auto timeRenderer = Renderer([&] {
+        std::string time_str = getCurrentTime();
+        return text(time_str) | color(Color::CornflowerBlue) | bold | center | border;
+    });
+    auto filler_component = Renderer([] { return filler(); });
     auto container = Container::Vertical({
+                                                 timeRenderer,
                                                  hoverable_checkbox,
                                                  Renderer([&] {
                                                      if (hover) {
@@ -60,11 +84,31 @@ int main() {
                                                          return text(L"");  // return empty text element
                                                      }
                                                  }),
-                                                 input_component,
-                                                 update_button,
+                                                 filler_component,
+                                                 Container::Horizontal({
+                                                                               input_component | borderRounded,
+                                                                               update_button
+                                                                       }),
+                                                 Renderer([] {
+                                                     return text("qqq ▶️ Quit");
+                                                 })
                                          });
 
-    auto quit_component = Make<ExitEngine>(container, screen.ExitLoopClosure());
-    screen.Loop(quit_component);
+
+    auto quit_engine = Make<EngineWrapper>(container, [&screen]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        screen.Exit();
+    });
+
+    // Run the application in a loop.
+    std::thread([&] {
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            screen.PostEvent(Event::Custom);
+        }
+    }).detach();
+
+    screen.Clear();
+    screen.Loop(quit_engine);
     return 0;
 }
