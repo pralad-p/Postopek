@@ -1,80 +1,70 @@
-#include <memory>   // for shared_ptr, allocator, __shared_ptr_access
-#include <thread>   // for thread, sleep_for
-#include <chrono>   // for milliseconds
-#include <array>
+#include <utility>
 
-#include "ftxui/component/component.hpp"              // for Renderer, Checkbox, Container, Vertical
-#include "ftxui/component/component_base.hpp"         // for ComponentBase
-#include "ftxui/component/screen_interactive.hpp"     // for ScreenInteractive
-#include "ftxui/dom/elements.hpp"                     // for operator|, Element, text, bold, border, center, color
-#include "ftxui/screen/color.hpp"                     // for Color, Color::Red
+#include "ftxui/component/component.hpp"
+#include "ftxui/component/screen_interactive.hpp"
+#include "ftxui/dom/elements.hpp"
 
 using namespace ftxui;
 
-int main(int argc, const char *argv[]) {
-    auto screen = ScreenInteractive::FitComponent();
-    auto button_quit = Button("Quit", screen.ExitLoopClosure());
-    screen.Clear();
-
-    // Create a vector of strings for the checklist items.
-    std::vector<std::string> items = {"Marinate chicken", "Cut them up", "Cook"};
-
-    // Create a vector of booleans to track which items are states.
-    std::array<bool, 3> states = {false, false, false};
-    auto checkboxContainer = Container::Vertical({});
-
-    // Create a vector of Checkbox components for the checklist.
-    std::vector<Component> checkboxes;
-    for (size_t i = 0; i < items.size(); ++i) {
-        checkboxContainer->Add(Checkbox(&items[i], &states[i]));
+class ExitEngine : public ComponentBase {
+public:
+    explicit ExitEngine(Component component, std::function<void()> quit_callback)
+            : component_(std::move(component)), quit_callback_(std::move(quit_callback)) {
+        Add(component_);
     }
 
-    // Create the text element for the counter.
-    int counter = 0;
+private:
+    Component component_;
+    std::function<void()> quit_callback_;
+    int q_counter = 0;  // Add a counter for 'q' presses
 
-    // Create a Renderer component for the counter text element.
-    auto counterRenderer = Renderer([&] {
-        return vbox({
-                            text("Counter: ") | center | bold | border,
-                            text(std::to_string(counter))
-                    });
-    });
-
-    // Separate thread for updating the checkbox state.
-//    std::thread updateThread([&] {
-//        while (true) {
-//            // Perform some logic here to update the checkbox state.
-//            checkboxState = !checkboxState;
-//
-//            // Post an event to the main thread to trigger a re-render.
-//            screen.PostEvent(Event::Custom);
-//
-//            // Sleep for 1 second.
-//            std::this_thread::sleep_for(std::chrono::seconds(5));
-//        }
-//    });
-
-    std::thread counterThread([&] {
-        while (true) {
-            // Perform some logic here to update the counter.
-            counter++;
-
-            // Post an event to the main thread to trigger a re-render.
-            screen.PostEvent(Event::Custom);
-
-            // Sleep for 2 seconds.
-            std::this_thread::sleep_for(std::chrono::seconds(2));
+    bool OnEvent(Event event) override {
+        if (event == Event::Character('q')) {
+            ++q_counter;
+            if (q_counter == 3) {  // Only exit when 'q' is pressed 3 times
+                quit_callback_();
+                return true;
+            }
+        } else {
+            q_counter = 0;  // Reset the counter if any key other than 'q' is pressed
         }
-    });
+        return component_->OnEvent(event);
+    }
+};
 
-    // Run the render loop for the text element in the main thread.
-    screen.Loop(Container::Vertical({
-                                            counterRenderer,
-                                            checkboxContainer,
-                                            button_quit
-                                    }));
 
-    // Join the update thread to properly exit the application.
-    counterThread.join();
+int main() {
+    bool hover = false;
+    bool checked = false;
+    std::wstring label = L"My checkbox";
+    std::string input_value;
+    auto input_component = Input(&input_value, "Placeholder text");
+
+    std::wstring hover_text = L"Hovering over checkbox";
+    auto update_hover_text = [&]() {
+        hover_text = std::wstring(input_value.begin(), input_value.end());
+    };
+    auto update_button = Button("Update", update_hover_text);
+
+    auto screen = ScreenInteractive::FitComponent();
+
+    auto checkbox = Checkbox(&label, &checked);
+    auto hoverable_checkbox = Hoverable(checkbox, &hover);
+
+    auto container = Container::Vertical({
+                                                 hoverable_checkbox,
+                                                 Renderer([&] {
+                                                     if (hover) {
+                                                         return text(hover_text) | border;
+                                                     } else {
+                                                         return text(L"");  // return empty text element
+                                                     }
+                                                 }),
+                                                 input_component,
+                                                 update_button,
+                                         });
+
+    auto quit_component = Make<ExitEngine>(container, screen.ExitLoopClosure());
+    screen.Loop(quit_component);
     return 0;
 }
