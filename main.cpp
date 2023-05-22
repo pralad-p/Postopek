@@ -17,16 +17,16 @@ public:
 private:
     Component component_;
     std::function<void()> quit_callback_;
-    int q_counter = 0;  // Add a counter for 'q' presses
+    int q_counter = 0; // global quitting variable
 
     bool OnEvent(Event event) override {
         if (event == Event::Character('q')) {
-            ++q_counter;
+            ++q_counter; // increment the global variable
             if (q_counter == 3) {  // Only exit when 'q' is pressed 3 times
                 quit_callback_();
                 return true;
             }
-        } else {
+        } else if (event.is_character()) {
             q_counter = 0;  // Reset the counter if any key other than 'q' is pressed
         }
         return component_->OnEvent(event);
@@ -47,7 +47,7 @@ int main() {
     };
     auto update_button = Button("Update", update_hover_text);
 
-    auto screen = ScreenInteractive::FitComponent();
+    auto screen = ScreenInteractive::Fullscreen();
 
     auto checkbox = Checkbox(&label, &checked);
     auto hoverable_checkbox = Hoverable(checkbox, &hover);
@@ -58,7 +58,7 @@ int main() {
     });
 
     auto container = Container::Vertical({
-                                                 timeRenderer | flex,
+                                                 timeRenderer,
                                                  hoverable_checkbox,
                                                  Renderer([&] {
                                                      if (hover) {
@@ -69,7 +69,7 @@ int main() {
                                                  }),
                                                  Container::Horizontal({
                                                                                input_component | flex,
-                                                                               update_button | flex
+                                                                               update_button
                                                                        })
                                          });
 
@@ -86,6 +86,7 @@ int main() {
         }
     }).detach();
 
+    screen.Clear();
     screen.Loop(quit_engine);
     return 0;
 }
