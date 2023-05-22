@@ -3,6 +3,7 @@
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "ftxui/component/component_options.hpp"
 #include "utils.h"
 
 using namespace ftxui;
@@ -17,7 +18,7 @@ public:
 private:
     Component component_;
     std::function<void()> quit_callback_;
-    int q_counter = 0; // global quitting variable
+    int q_counter = 0; // quitting variable
 
     bool OnEvent(Event event) override {
         if (event == Event::Character('q')) {
@@ -32,7 +33,6 @@ private:
         return component_->OnEvent(event);
     }
 };
-
 
 int main() {
     bool hover = false;
@@ -49,7 +49,24 @@ int main() {
 
     auto screen = ScreenInteractive::Fullscreen();
 
-    auto checkbox = Checkbox(&label, &checked);
+    auto checkbox_decorator = [](const EntryState &state) {
+        // You can modify this part to suit your needs.
+        std::function < Element(Element) > base_style = state.state ? inverted : nothing;
+        if (state.state)
+            base_style = base_style | color(Color::Green);
+        else
+            base_style = base_style | color(Color::Red);
+
+        return hbox({
+                            text(L"[") | base_style,
+                            text(state.active ? L"x" : L" ") | base_style,
+                            text(L"] ") | base_style,
+                            text(state.label) | base_style,
+                    });
+    };
+    auto checkbox_option = CheckboxOption();
+    checkbox_option.transform = checkbox_decorator;
+    auto checkbox = Checkbox(&label, &checked, checkbox_option);
     auto hoverable_checkbox = Hoverable(checkbox, &hover);
 
     auto timeRenderer = Renderer([&] {
