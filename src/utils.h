@@ -13,4 +13,6 @@ std::string getCurrentTime();
 
 std::wstring convertToWideString(const std::string &);
 
+std::string convertToHoursMinutes(const std::string &);
+
 #endif //POSTOPEK_UTILS_H

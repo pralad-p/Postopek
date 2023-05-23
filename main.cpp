@@ -1,114 +1,144 @@
-#include <utility>
-
+/*
+ * FTXUI Libraries
+ */
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "ftxui/component/component_options.hpp"
+
+/*
+ * System libraries
+ */
+#include <sstream>
+
+/*
+ * Own module libraries
+ */
 #include "utils.h"
-
-using namespace ftxui;
-
-class EngineWrapper : public ComponentBase {
-public:
-    explicit EngineWrapper(Component component, std::function<void()> quit_callback)
-            : component_(std::move(component)), quit_callback_(std::move(quit_callback)) {
-        Add(component_);
-    }
-
-private:
-    Component component_;
-    std::function<void()> quit_callback_;
-    int q_counter = 0; // quitting variable
-
-    bool OnEvent(Event event) override {
-        if (event == Event::Character('q')) {
-            ++q_counter; // increment the global variable
-            if (q_counter == 3) {  // Only exit when 'q' is pressed 3 times
-                quit_callback_();
-                return true;
-            }
-        } else if (event.is_character()) {
-            q_counter = 0;  // Reset the counter if any key other than 'q' is pressed
-        }
-        return component_->OnEvent(event);
-    }
-};
+#include "EngineWrapper.h"
 
 int main() {
-    bool hover = false;
+    // Variables
     bool checked = false;
-    std::wstring label = L"My checkbox";
+    bool updatedBefore = false;
+    auto checkboxLabel = [&]() -> std::wstring {
+        std::wstring label = L"My checkbox";
+        if (checked) {
+            std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            label.insert(0, timeModded);
+        }
+        return label;
+    };
     std::string input_value;
-    auto input_component = Input(&input_value, "Placeholder text");
+    bool hover_checkbox = false;
 
-    std::wstring hover_text = L"Hovering over checkbox";
+    // Components
+    auto input_component = ftxui::Input(&input_value, "Placeholder text");
+
+
+    // Lambdas
+    std::wstring hover_text;
     auto update_hover_text = [&]() {
-        hover_text = std::wstring(input_value.begin(), input_value.end());
+        std::wstring input_value_wstring(input_value.begin(), input_value.end());
+        // Append the converted input_value to hover_text on a new line
+        if (!hover_text.empty()) {
+            hover_text += L"\n";
+        }
+        hover_text += L"- [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+        hover_text += input_value_wstring;
+        input_value.clear();
+        updatedBefore = true;
     };
-    auto update_button = Button("Update", update_hover_text);
+    auto update_button = ftxui::Button("Update", update_hover_text);
 
-    auto screen = ScreenInteractive::Fullscreen();
 
-    auto checkbox_decorator = [](const EntryState &state) {
-        // You can modify this part to suit your needs.
-        std::function < Element(Element) > base_style = state.state ? inverted : nothing;
-        if (state.state)
-            base_style = base_style | color(Color::Green);
-        else
+    // Screen
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+
+    auto checkbox_decorator = [&checkboxLabel](const ftxui::EntryState &state) {
+        std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted : ftxui::nothing;
+        if (state.state) {
+            base_style = base_style | color(ftxui::Color::Green);
+        } else {
             base_style = base_style;
+        }
 
-        return hbox({
-                            text(L"[") | base_style,
-                            text(state.state ? L"✅" : L" ") | base_style,
-                            text(L"] ") | base_style,
-                            text(state.label) | base_style,
-                    });
+        return ftxui::hbox({
+                                   ftxui::text(L"[") | base_style,
+                                   ftxui::text(state.state ? L"✅" : L" ") | base_style,
+                                   ftxui::text(L"] ") | base_style,
+                                   ftxui::text(checkboxLabel()) | base_style,
+                           });
     };
-    auto checkbox_option = CheckboxOption();
+    auto checkbox_option = ftxui::CheckboxOption();
     checkbox_option.transform = checkbox_decorator;
-    auto checkbox = Checkbox(&label, &checked, checkbox_option);
-    auto hoverable_checkbox = Hoverable(checkbox, &hover);
+    auto checkbox = Checkbox("My first checkbox", &checked, checkbox_option);
 
-    auto timeRenderer = Renderer([&] {
+    // Modify the hoverable_checkbox
+    auto hoverable_checkbox = Hoverable(checkbox,
+                                        [&]() { hover_checkbox = true; },
+                                        [&]() { hover_checkbox = false; });
+
+    auto hover_text_renderer = ftxui::Renderer([&] {
+        if (hover_checkbox && updatedBefore) {
+            // Convert hover_text from std::wstring to std::string.
+            std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
+            std::vector<std::string> lines;
+            std::istringstream iss(hover_text_str);
+            for (std::string line; std::getline(iss, line);) {
+                lines.push_back(line);
+            }
+            std::vector<ftxui::Element> elements;
+            elements.reserve(lines.size());
+            for (const auto &line: lines) {
+                elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
+            }
+            return ftxui::vbox(elements) | ftxui::center;
+        } else {
+            return nothing(ftxui::text(""));
+        }
+    });
+
+    auto timeRenderer = ftxui::Renderer([&] {
         std::string time_str = getCurrentTime();
-        return text(time_str) | color(Color::CornflowerBlue) | bold | center | border;
+        return ftxui::text(time_str)
+               | color(ftxui::Color::CornflowerBlue)
+               | ftxui::bold
+               | ftxui::center
+               | ftxui::border;
     });
-    auto filler_component = Renderer([] { return filler(); });
-    auto container = Container::Vertical({
-                                                 timeRenderer,
-                                                 hoverable_checkbox,
-                                                 Renderer([&] {
-                                                     if (hover) {
-                                                         return text(hover_text) | border;
-                                                     } else {
-                                                         return text(L"");  // return empty text element
-                                                     }
-                                                 }),
-                                                 filler_component,
-                                                 Container::Horizontal({
-                                                                               input_component | borderRounded,
-                                                                               update_button
-                                                                       }),
-                                                 Renderer([] {
-                                                     return text("qqq ▶️ Quit");
-                                                 })
-                                         });
 
+    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
 
-    auto quit_engine = Make<EngineWrapper>(container, [&screen]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        screen.Exit();
-    });
+    auto container = ftxui::Container::Vertical({
+                                                        timeRenderer,
+                                                        hoverable_checkbox,
+                                                        hover_text_renderer,
+                                                        filler_component,
+                                                        ftxui::Container::Horizontal({
+                                                                                             input_component |
+                                                                                             ftxui::borderRounded,
+                                                                                             update_button
+                                                                                     }),
+                                                        ftxui::Renderer([] {
+                                                            return ftxui::text("qqq ▶️ Quit");
+                                                        })
+                                                });
+
+    // Replace the main component with the engine wrapper
+    auto main_component = ftxui::Make<EngineWrapper>(container, screen.ExitLoopClosure());
 
     // Run the application in a loop.
     std::thread([&] {
         while (true) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            screen.PostEvent(Event::Custom);
+            screen.PostEvent(ftxui::Event::Custom);
         }
     }).detach();
 
+    // Start the event loop.
     screen.Clear();
-    screen.Loop(quit_engine);
+    screen.Loop(main_component);
+
     return 0;
 }
