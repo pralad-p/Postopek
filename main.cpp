@@ -35,22 +35,28 @@ private:
 };
 
 int main() {
-    bool hover = false;
+    // Variables
     bool checked = false;
     std::wstring label = L"My checkbox";
     std::string input_value;
+    bool hover_checkbox = false;
+
+    // Components
     auto input_component = Input(&input_value, "Placeholder text");
 
+
+    // Lambdas
     std::wstring hover_text = L"Hovering over checkbox";
     auto update_hover_text = [&]() {
         hover_text = std::wstring(input_value.begin(), input_value.end());
     };
     auto update_button = Button("Update", update_hover_text);
 
+
+    // Screen
     auto screen = ScreenInteractive::Fullscreen();
 
     auto checkbox_decorator = [](const EntryState &state) {
-        // You can modify this part to suit your needs.
         std::function < Element(Element) > base_style = state.state ? inverted : nothing;
         if (state.state)
             base_style = base_style | color(Color::Green);
@@ -67,23 +73,31 @@ int main() {
     auto checkbox_option = CheckboxOption();
     checkbox_option.transform = checkbox_decorator;
     auto checkbox = Checkbox(&label, &checked, checkbox_option);
-    auto hoverable_checkbox = Hoverable(checkbox, &hover);
+
+    // Modify the hoverable_checkbox
+    auto hoverable_checkbox = Hoverable(checkbox,
+                                        [&]() { hover_checkbox = true; },
+                                        [&]() { hover_checkbox = false; });
+
+    auto hover_text_renderer = Renderer([&] {
+        if (hover_checkbox) {
+            return text(hover_text) | color(Color::Red) | bold | center;
+        } else {
+            return nothing(text(""));
+        }
+    });
 
     auto timeRenderer = Renderer([&] {
         std::string time_str = getCurrentTime();
         return text(time_str) | color(Color::CornflowerBlue) | bold | center | border;
     });
+
     auto filler_component = Renderer([] { return filler(); });
+
     auto container = Container::Vertical({
                                                  timeRenderer,
                                                  hoverable_checkbox,
-                                                 Renderer([&] {
-                                                     if (hover) {
-                                                         return text(hover_text) | border;
-                                                     } else {
-                                                         return text(L"");  // return empty text element
-                                                     }
-                                                 }),
+                                                 hover_text_renderer,
                                                  filler_component,
                                                  Container::Horizontal({
                                                                                input_component | borderRounded,
@@ -94,11 +108,8 @@ int main() {
                                                  })
                                          });
 
-
-    auto quit_engine = Make<EngineWrapper>(container, [&screen]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        screen.Exit();
-    });
+    // Replace the main component with the engine wrapper
+    auto main_component = Make<EngineWrapper>(container, screen.ExitLoopClosure());
 
     // Run the application in a loop.
     std::thread([&] {
@@ -108,7 +119,9 @@ int main() {
         }
     }).detach();
 
+    // Start the event loop.
     screen.Clear();
-    screen.Loop(quit_engine);
+    screen.Loop(main_component);
+
     return 0;
 }
