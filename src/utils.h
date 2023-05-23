@@ -11,6 +11,6 @@
 
 std::string getCurrentTime();
 
-std::wstring convertToWideString(const std::string &);
+[[maybe_unused]] std::wstring convertToWideString(const std::string &);
 
 #endif //POSTOPEK_UTILS_H

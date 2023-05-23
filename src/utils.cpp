@@ -12,7 +12,7 @@ std::string getCurrentTime() {
     return str;
 }
 
-std::wstring convertToWideString(const std::string &str) {
+[[maybe_unused]] std::wstring convertToWideString(const std::string &str) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     std::wstring wide_str = converter.from_bytes(str);
     return wide_str;
