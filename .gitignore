@@ -1,3 +1,4 @@
 /CMakeLists.txt
 /cmake-build-*
 /.idea
+staging.cpp
