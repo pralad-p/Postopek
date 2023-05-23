@@ -5,6 +5,9 @@
 #include <string>
 #include "utils.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 std::string getCurrentTime() {
     std::chrono::system_clock::time_point p = std::chrono::system_clock::now();
     time_t t = std::chrono::system_clock::to_time_t(p);
@@ -13,7 +16,7 @@ std::string getCurrentTime() {
     return str;
 }
 
-[[maybe_unused]] std::wstring convertToWideString(const std::string &str) {
+std::wstring convertToWideString(const std::string &str) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     std::wstring wide_str = converter.from_bytes(str);
     return wide_str;
@@ -33,3 +36,5 @@ std::string convertToHoursMinutes(const std::string &timeString) {
     std::string hourString = (hour < 10) ? "0" + std::to_string(hour) : std::to_string(hour);
     return hourString + hhmm.substr(2) + " " + amPm;
 }
+
+#pragma clang diagnostic pop
