@@ -1,4 +1,5 @@
 #include <utility>
+#include <sstream>
 
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
@@ -81,7 +82,12 @@ int main() {
 
     auto hover_text_renderer = Renderer([&] {
         if (hover_checkbox) {
-            return text(hover_text) | color(Color::Red) | bold | center;
+            // Convert hover_text from std::wstring to std::string.
+            std::string hover_text_str(hover_text.begin(), hover_text.end());
+            // Use the paragraph function to create a paragraph element.
+            Element hover_text_paragraph = paragraph(hover_text_str);
+            // Return the paragraph with your desired styling.
+            return hover_text_paragraph | color(Color::Red) | bold | center;
         } else {
             return nothing(text(""));
         }
