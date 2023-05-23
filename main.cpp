@@ -64,7 +64,7 @@ int main() {
         }
 
         return ftxui::hbox({
-                                   ftxui::text(L"[") | base_style,
+                                   ftxui::text(L"1. [") | base_style,
                                    ftxui::text(state.state ? L"✅" : L" ") | base_style,
                                    ftxui::text(L"] ") | base_style,
                                    ftxui::text(checkboxLabel()) | base_style,
