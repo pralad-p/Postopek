@@ -16,11 +16,11 @@
  */
 #include "utils.h"
 #include "EngineWrapper.h"
+#include "components/UpdateButton.h"
 
 int main() {
     // Variables
     bool checked = false;
-    bool updatedBefore = false;
     auto checkboxLabel = [&]() -> std::wstring {
         std::wstring label = L"My checkbox";
         if (checked) {
@@ -35,22 +35,9 @@ int main() {
     // Components
     auto input_component = ftxui::Input(&input_value, "Placeholder text");
 
-
     // Lambdas
     std::wstring hover_text;
-    auto update_hover_text = [&]() {
-        std::wstring input_value_wstring(input_value.begin(), input_value.end());
-        // Append the converted input_value to hover_text on a new line
-        if (!hover_text.empty()) {
-            hover_text += L"\n";
-        }
-        hover_text += L"- [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
-        hover_text += input_value_wstring;
-        input_value.clear();
-        updatedBefore = true;
-    };
-    auto update_button = ftxui::Button("Update", update_hover_text);
-
+    auto updateButton = UpdateButton(hover_text, input_value);
 
     // Screen
     auto screen = ftxui::ScreenInteractive::Fullscreen();
@@ -80,7 +67,7 @@ int main() {
                                         [&]() { hover_checkbox = false; });
 
     auto hover_text_renderer = ftxui::Renderer([&] {
-        if (hover_checkbox && updatedBefore) {
+        if (hover_checkbox) {
             // Convert hover_text from std::wstring to std::string.
             std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
             std::vector<std::string> lines;
@@ -118,7 +105,7 @@ int main() {
                                                         ftxui::Container::Horizontal({
                                                                                              input_component |
                                                                                              ftxui::borderRounded,
-                                                                                             update_button
+                                                                                             updateButton()
                                                                                      }),
                                                         ftxui::Renderer([] {
                                                             return ftxui::text("qqq ▶️ Quit");
