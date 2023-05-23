@@ -20,6 +20,7 @@
 int main() {
     // Variables
     bool checked = false;
+    bool updatedBefore = false;
     auto checkboxLabel = [&]() -> std::wstring {
         std::wstring label = L"My checkbox";
         if (checked) {
@@ -36,9 +37,17 @@ int main() {
 
 
     // Lambdas
-    std::wstring hover_text = L"Hovering over checkbox";
+    std::wstring hover_text;
     auto update_hover_text = [&]() {
-        hover_text = std::wstring(input_value.begin(), input_value.end());
+        std::wstring input_value_wstring(input_value.begin(), input_value.end());
+        // Append the converted input_value to hover_text on a new line
+        if (!hover_text.empty()) {
+            hover_text += L"\n";
+        }
+        hover_text += L"- [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+        hover_text += input_value_wstring;
+        input_value.clear();
+        updatedBefore = true;
     };
     auto update_button = ftxui::Button("Update", update_hover_text);
 
@@ -71,13 +80,20 @@ int main() {
                                         [&]() { hover_checkbox = false; });
 
     auto hover_text_renderer = ftxui::Renderer([&] {
-        if (hover_checkbox) {
+        if (hover_checkbox && updatedBefore) {
             // Convert hover_text from std::wstring to std::string.
-            std::string hover_text_str(hover_text.begin(), hover_text.end());
-            // Use the paragraph function to create a paragraph element.
-            ftxui::Element hover_text_paragraph = ftxui::paragraph(hover_text_str);
-            // Return the paragraph with your desired styling.
-            return hover_text_paragraph | color(ftxui::Color::Red) | ftxui::bold | ftxui::center;
+            std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
+            std::vector<std::string> lines;
+            std::istringstream iss(hover_text_str);
+            for (std::string line; std::getline(iss, line);) {
+                lines.push_back(line);
+            }
+            std::vector<ftxui::Element> elements;
+            elements.reserve(lines.size());
+            for (const auto &line: lines) {
+                elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
+            }
+            return ftxui::vbox(elements) | ftxui::center;
         } else {
             return nothing(ftxui::text(""));
         }
