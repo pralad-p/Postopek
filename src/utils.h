@@ -10,7 +10,8 @@
 #include <codecvt>
 
 std::string getCurrentTime();
-
 [[maybe_unused]] std::wstring convertToWideString(const std::string &);
+
+std::string convertToHoursMinutes(const std::string &);
 
 #endif //POSTOPEK_UTILS_H

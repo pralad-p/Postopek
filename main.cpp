@@ -20,7 +20,14 @@
 int main() {
     // Variables
     bool checked = false;
-    std::wstring label = L"My checkbox";
+    auto checkboxLabel = [&]() -> std::wstring {
+        std::wstring label = L"My checkbox";
+        if (checked) {
+            std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            label.insert(0, timeModded);
+        }
+        return label;
+    };
     std::string input_value;
     bool hover_checkbox = false;
 
@@ -39,23 +46,24 @@ int main() {
     // Screen
     auto screen = ftxui::ScreenInteractive::Fullscreen();
 
-    auto checkbox_decorator = [](const ftxui::EntryState &state) {
+    auto checkbox_decorator = [&checkboxLabel](const ftxui::EntryState &state) {
         std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted : ftxui::nothing;
-        if (state.state)
+        if (state.state) {
             base_style = base_style | color(ftxui::Color::Green);
-        else
+        } else {
             base_style = base_style;
+        }
 
         return ftxui::hbox({
                                    ftxui::text(L"[") | base_style,
                                    ftxui::text(state.state ? L"✅" : L" ") | base_style,
                                    ftxui::text(L"] ") | base_style,
-                                   ftxui::text(state.label) | base_style,
+                                   ftxui::text(checkboxLabel()) | base_style,
                            });
     };
     auto checkbox_option = ftxui::CheckboxOption();
     checkbox_option.transform = checkbox_decorator;
-    auto checkbox = Checkbox(&label, &checked, checkbox_option);
+    auto checkbox = Checkbox("My first checkbox", &checked, checkbox_option);
 
     // Modify the hoverable_checkbox
     auto hoverable_checkbox = Hoverable(checkbox,
