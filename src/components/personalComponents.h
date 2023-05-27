@@ -2,8 +2,8 @@
 // Created by prlpr on 23/05/2023.
 //
 
-#ifndef POSTOPEK_UPDATEBUTTON_H
-#define POSTOPEK_UPDATEBUTTON_H
+#ifndef POSTOPEK_PERSONALCOMPONENTS_H
+#define POSTOPEK_PERSONALCOMPONENTS_H
 
 #include "ftxui/component/component.hpp"
 #include <string>
@@ -20,4 +20,4 @@ private:
     ftxui::Component button_;
 };
 
-#endif //POSTOPEK_UPDATEBUTTON_H
+#endif //POSTOPEK_PERSONALCOMPONENTS_H

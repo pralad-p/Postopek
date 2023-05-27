@@ -15,8 +15,8 @@
  * Own module libraries
  */
 #include "utils.h"
-#include "EngineWrapper.h"
-#include "components/UpdateButton.h"
+#include "Application.h"
+#include "components/personalComponents.h"
 
 int main() {
     // Variables
@@ -113,7 +113,7 @@ int main() {
                                                 });
 
     // Replace the main component with the engine wrapper
-    auto main_component = ftxui::Make<EngineWrapper>(container, screen.ExitLoopClosure());
+    auto main_component = ftxui::Make<Application>(container, screen.ExitLoopClosure());
 
     // Run the application in a loop.
     std::thread([&] {

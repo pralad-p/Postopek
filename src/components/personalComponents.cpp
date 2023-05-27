@@ -2,7 +2,7 @@
 // Created by prlpr on 23/05/2023.
 //
 
-#include "UpdateButton.h"
+#include "personalComponents.h"
 #include "utils.h"
 
 UpdateButton::UpdateButton(std::wstring &hover_text, std::string &input_value)
