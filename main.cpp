@@ -222,11 +222,18 @@ int main() {
                                                               messageContainer
                                                       }, &focus_selector);
 
-    auto main_component = ftxui::Make<Application>(applicationContainer, screen.ExitLoopClosure());
+    bool runEngine = true;
+    auto quitMethod = [&screen, &runEngine]() {
+        screen.ExitLoopClosure();
+        runEngine = false;
+        exit(0);
+    };
+    auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
+
 
     // Run the application in a loop.
     std::thread([&] {
-        while (true) {
+        while (runEngine) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             screen.PostEvent(ftxui::Event::Custom);
         }
