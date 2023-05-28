@@ -12,7 +12,6 @@
 #include <sstream>
 #include <filesystem>
 
-
 /*
  * Own module libraries
  */
@@ -20,6 +19,7 @@
 #include "Application.h"
 #include "components/personalComponents.h"
 #include "validation.h"
+#include "windows_utils.h"
 
 /*
  * Personal data structures
@@ -135,7 +135,7 @@ int main() {
         m.filePath = path;
         m.fileName = path.filename().string();
         m.isParseable = isValidMarkdownFile(path.string());
-        markdowns.push_back(m);
+        markdowns.push_back(std::move(m));
     }
 
     std::vector<std::string> menuEntries;
@@ -226,6 +226,7 @@ int main() {
     auto quitMethod = [&screen, &runEngine]() {
         screen.ExitLoopClosure();
         runEngine = false;
+        ClearDOSPromptScreen();
         exit(0);
     };
     auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
