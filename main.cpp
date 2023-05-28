@@ -44,6 +44,7 @@ int main() {
         return label;
     };
     std::string input_value;
+    int focus_selector = 0;
     bool hover_checkbox = false;
 
     // Components
@@ -138,18 +139,39 @@ int main() {
     }
 
     std::vector<std::string> menuEntries;
+    int menuSelected = -1;
     std::vector<bool> statusFlags;
 
     auto menuContainer = ftxui::Container::Vertical({});
     auto statusContainer = ftxui::Container::Vertical({});
 
-    for (auto mFile: markdowns) {
-        menuContainer->Add(ftxui::MenuEntry(mFile.fileName));
-        auto status = ftxui::Renderer([&] {
-            return (mFile.isParseable ? ftxui::text("🟢") : ftxui::text("⛔"));
+    for (const auto &mFile: markdowns) {
+        menuEntries.push_back(mFile.fileName);
+        statusFlags.push_back(mFile.isParseable);
+        auto status = ftxui::Renderer([mFile] {
+            if (mFile.isParseable) {
+                return ftxui::text("🟢");
+            } else {
+                return ftxui::text("⛔");
+            }
         });
         statusContainer->Add(status);
     }
+
+    // Define the callback function
+    auto fileSelectorCallback = [&]() {
+        if (!statusFlags.at(menuSelected)) {
+            focus_selector = 2;
+        } else {
+            focus_selector = 1;
+        }
+    };
+
+    // Create the MenuOption object
+    ftxui::MenuOption file_menu_option;
+    file_menu_option.on_enter = fileSelectorCallback;
+
+    menuContainer->Add(ftxui::Menu(&menuEntries, &menuSelected, file_menu_option));
 
     auto fileSelectorContainer = ftxui::Container::Vertical({
                                                                     ftxui::Renderer([] {
@@ -177,11 +199,27 @@ int main() {
                                                                                                  })
                                                             }) | ftxui::border | ftxui::center;
 
-    int focus_selector = 0;
+    std::string messageButtonString = "OK, take me back!";
+    auto messageButtonCallback = [&focus_selector]() {
+        focus_selector = 0;
+    };
+    auto messageContainer = ftxui::Container::Vertical({
+                                                               ftxui::Renderer([] {
+                                                                   return ftxui::text(
+                                                                           "Can't select file: Not compatible with Postopek!") |
+                                                                          ftxui::bold | ftxui::center;
+                                                               }),
+                                                               ftxui::Renderer([] { return ftxui::separatorHeavy(); }),
+                                                               ftxui::Button(&messageButtonString,
+                                                                             messageButtonCallback)
+                                                       }) | ftxui::border | ftxui::center;
+
+
     // Replace the main component with the engine wrapper
     auto applicationContainer = ftxui::Container::Tab({
                                                               fileSelectorContainer,
                                                               taskContainer,
+                                                              messageContainer
                                                       }, &focus_selector);
 
     auto main_component = ftxui::Make<Application>(applicationContainer, screen.ExitLoopClosure());
