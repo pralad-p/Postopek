@@ -21,6 +21,14 @@
 #include "components/personalComponents.h"
 #include "validation.h"
 
+/*
+ * Personal data structures
+ */
+typedef struct markdownFile_ {
+    std::filesystem::path filePath;
+    std::string fileName;
+    bool isParseable{};
+} markdownFile;
 
 int main() {
     // Read from config file
@@ -39,7 +47,7 @@ int main() {
     bool hover_checkbox = false;
 
     // Components
-    auto input_component = ftxui::Input(&input_value, "Placeholder text");
+    auto input_component = ftxui::Input(&input_value, "Enter text...");
 
     // Lambdas
     std::wstring hover_text;
@@ -114,12 +122,69 @@ int main() {
                                                                                                  updateButton()
                                                                                          }),
                                                             ftxui::Renderer([] {
-                                                            return ftxui::text("qqq ▶️ Quit");
-                                                        })
-                                                });
+                                                                return ftxui::text("qqq ▶️ Quit");
+                                                            })
+                                                    });
 
+    std::vector<markdownFile> markdowns;
+    markdowns.reserve(mdPaths.size());
+    // Set file names to entries
+    for (const auto &path: mdPaths) {
+        markdownFile m;
+        m.filePath = path;
+        m.fileName = path.filename().string();
+        m.isParseable = isValidMarkdownFile(path.string());
+        markdowns.push_back(m);
+    }
+
+    std::vector<std::string> menuEntries;
+    std::vector<bool> statusFlags;
+
+    auto menuContainer = ftxui::Container::Vertical({});
+    auto statusContainer = ftxui::Container::Vertical({});
+
+    for (auto mFile: markdowns) {
+        menuContainer->Add(ftxui::MenuEntry(mFile.fileName));
+        auto status = ftxui::Renderer([&] {
+            return (mFile.isParseable ? ftxui::text("🟢") : ftxui::text("⛔"));
+        });
+        statusContainer->Add(status);
+    }
+
+    auto fileSelectorContainer = ftxui::Container::Vertical({
+                                                                    ftxui::Renderer([] {
+                                                                        return ftxui::text("Select process") |
+                                                                               ftxui::bold | ftxui::center;
+                                                                    }),
+                                                                    ftxui::Renderer([] { return ftxui::separator(); }),
+                                                                    ftxui::Container::Horizontal({
+                                                                                                         menuContainer,
+                                                                                                         ftxui::Renderer(
+                                                                                                                 [] {
+                                                                                                                     return ftxui::hbox(
+                                                                                                                             ftxui::text(
+                                                                                                                                     "    "),
+                                                                                                                             ftxui::separatorDouble(),
+                                                                                                                             ftxui::text(
+                                                                                                                                     "  "));
+                                                                                                                 }),
+                                                                                                         statusContainer,
+                                                                                                         ftxui::Renderer(
+                                                                                                                 [] {
+                                                                                                                     return ftxui::text(
+                                                                                                                             "   ");
+                                                                                                                 })
+                                                                                                 })
+                                                            }) | ftxui::border | ftxui::center;
+
+    int focus_selector = 0;
     // Replace the main component with the engine wrapper
-    auto main_component = ftxui::Make<Application>(taskContainer, screen.ExitLoopClosure());
+    auto applicationContainer = ftxui::Container::Tab({
+                                                              fileSelectorContainer,
+                                                              taskContainer,
+                                                      }, &focus_selector);
+
+    auto main_component = ftxui::Make<Application>(applicationContainer, screen.ExitLoopClosure());
 
     // Run the application in a loop.
     std::thread([&] {
