@@ -49,4 +49,29 @@ void FileContainer::Parse() {
     }
 }
 
+const std::string &FileContainer::getHeader() const {
+    return header_;
+}
+
+void FileContainer::setHeader(const std::string &header) {
+    header_ = header;
+}
+
+const std::vector<std::string> &FileContainer::getTasks() const {
+    return tasks_;
+}
+
+void FileContainer::setTasks(const std::vector<std::string> &tasks) {
+    tasks_ = tasks;
+}
+
+const std::vector<std::string> &FileContainer::getComments() const {
+    return comments_;
+}
+
+void FileContainer::setComments(const std::vector<std::string> &comments) {
+    comments_ = comments;
+}
+
+
 

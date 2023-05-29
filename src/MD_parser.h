@@ -17,6 +17,18 @@ public:
 
     void Parse();
 
+    const std::string &getHeader() const;
+
+    void setHeader(const std::string &header);
+
+    const std::vector<std::string> &getTasks() const;
+
+    void setTasks(const std::vector<std::string> &tasks);
+
+    const std::vector<std::string> &getComments() const;
+
+    void setComments(const std::vector<std::string> &comments);
+
 private:
     bool has_been_modified_;
     std::filesystem::path file_path_;

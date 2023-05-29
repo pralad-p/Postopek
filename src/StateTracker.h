@@ -13,10 +13,6 @@ public:
         return instance;
     }
 
-    bool &getCheckBoxChecked() {
-        return checkbox_checked_;
-    }
-
     int &getMenuSelector() {
         return menu_selector_;
     }
@@ -27,7 +23,6 @@ public:
     StateTracker &operator=(const StateTracker &) = delete; // Disable assignment operator
 private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
-    bool checkbox_checked_;
     int menu_selector_;
     // Add more state variables here
 };
