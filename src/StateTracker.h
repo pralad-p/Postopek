@@ -16,6 +16,10 @@ public:
     int &getMenuSelector() {
         return menu_selector_;
     }
+
+    int &getFocusSelector() {
+        return focus_selector_;
+    }
     // Add more state variables and corresponding accessor/mutator methods as needed
 
 
@@ -24,6 +28,7 @@ public:
 private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
     int menu_selector_;
+    int focus_selector_;
     // Add more state variables here
 };
 
