@@ -20,6 +20,7 @@
 #include "components/personalComponents.h"
 #include "validation.h"
 #include "windows_utils.h"
+#include "StateTracker.h"
 
 /*
  * Personal data structures
@@ -31,13 +32,14 @@ typedef struct markdownFile_ {
 } markdownFile;
 
 int main() {
+    StateTracker &stateTracker = StateTracker::getInstance();
     // Read from config file
     auto mdPaths = checkTempFileAndGetFiles();
     // Variables
-    bool checked = false;
+    stateTracker.getCheckBoxChecked() = false;
     auto checkboxLabel = [&]() -> std::wstring {
         std::wstring label = L"My checkbox";
-        if (checked) {
+        if (stateTracker.getCheckBoxChecked()) {
             std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
             label.insert(0, timeModded);
         }
@@ -74,7 +76,8 @@ int main() {
     };
     auto checkbox_option = ftxui::CheckboxOption();
     checkbox_option.transform = checkbox_decorator;
-    auto checkbox = Checkbox("My first checkbox", &checked, checkbox_option);
+    auto checkbox_check = stateTracker.getCheckBoxChecked();
+    auto checkbox = Checkbox("My first checkbox", &checkbox_check, checkbox_option);
 
     // Modify the hoverable_checkbox
     auto hoverable_checkbox = Hoverable(checkbox,
@@ -224,10 +227,9 @@ int main() {
 
     bool runEngine = true;
     auto quitMethod = [&screen, &runEngine]() {
-        screen.ExitLoopClosure();
+        screen.Exit();
         runEngine = false;
         ClearDOSPromptScreen();
-        exit(0);
     };
     auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
 
