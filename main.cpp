@@ -36,10 +36,11 @@ int main() {
     // Read from config file
     auto mdPaths = checkTempFileAndGetFiles();
     // Variables
-    stateTracker.getCheckBoxChecked() = false;
+    auto &checkbox_status = stateTracker.getCheckBoxChecked();
+    checkbox_status = false;
     auto checkboxLabel = [&]() -> std::wstring {
         std::wstring label = L"My checkbox";
-        if (stateTracker.getCheckBoxChecked()) {
+        if (checkbox_status) {
             std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
             label.insert(0, timeModded);
         }
@@ -76,8 +77,7 @@ int main() {
     };
     auto checkbox_option = ftxui::CheckboxOption();
     checkbox_option.transform = checkbox_decorator;
-    auto checkbox_check = stateTracker.getCheckBoxChecked();
-    auto checkbox = Checkbox("My first checkbox", &checkbox_check, checkbox_option);
+    auto checkbox = Checkbox("My first checkbox", &checkbox_status, checkbox_option);
 
     // Modify the hoverable_checkbox
     auto hoverable_checkbox = Hoverable(checkbox,
@@ -142,7 +142,8 @@ int main() {
     }
 
     std::vector<std::string> menuEntries;
-    int menuSelected = -1;
+    auto &menu_selector = stateTracker.getMenuSelector();
+    menu_selector = -1;
     std::vector<bool> statusFlags;
 
     auto menuContainer = ftxui::Container::Vertical({});
@@ -163,7 +164,7 @@ int main() {
 
     // Define the callback function
     auto fileSelectorCallback = [&]() {
-        if (!statusFlags.at(menuSelected)) {
+        if (!statusFlags.at(menu_selector)) {
             focus_selector = 2;
         } else {
             focus_selector = 1;
@@ -174,7 +175,7 @@ int main() {
     ftxui::MenuOption file_menu_option;
     file_menu_option.on_enter = fileSelectorCallback;
 
-    menuContainer->Add(ftxui::Menu(&menuEntries, &menuSelected, file_menu_option));
+    menuContainer->Add(ftxui::Menu(&menuEntries, &menu_selector, file_menu_option));
 
     auto fileSelectorContainer = ftxui::Container::Vertical({
                                                                     ftxui::Renderer([] {
