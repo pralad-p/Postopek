@@ -43,8 +43,9 @@ void FileContainer::Parse() {
             if (!generic_comment.empty()) {
                 generic_comment += "\n";
             }
-            generic_comment += "💠 ";
+            generic_comment += " => ";
             generic_comment += matches[1];
+            generic_comment += "  ";
         }
     }
 }
