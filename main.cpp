@@ -20,110 +20,23 @@
 #include "Application.h"
 #include "components/personalComponents.h"
 #include "validation.h"
-#include "windows_utils.h"
 #include "StateTracker.h"
-#include "MD_parser.h"
+#include "windows_utils.h"
 
 /*
  * Personal data structures
  */
-auto taskSpecificContainer = ftxui::Container::Vertical({});
-
 typedef struct markdownFile_ {
     std::filesystem::path filePath;
     std::string fileName;
     bool isParseable{};
 } markdownFile;
 
-ftxui::Components modifyTaskContainer(const FileContainer &f) {
-    ftxui::Components components;
-    auto currentContainerSize = f.getTasks().size();
-    std::vector<std::shared_ptr<bool>> checkbox_status_, checkbox_hovered_status_;
-    std::vector<std::wstring> checkbox_labels_, checkbox_comments_;
-
-    auto checkboxLabel = [&](std::wstring label, bool checkbox_status) -> std::wstring {
-        if (checkbox_status) {
-            std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
-            label.insert(0, timeModded);
-        }
-        return label;
-    };
-
-    size_t i;
-    for (i = 0; i < currentContainerSize; i++) {
-        auto false_ptr = std::make_shared<bool>(false);
-        checkbox_status_.push_back(false_ptr);
-        checkbox_hovered_status_.push_back(false_ptr);
-        checkbox_labels_.push_back(convertToWideString(f.getTasks().at(i)));
-        checkbox_comments_.push_back(convertToWideString(f.getComments().at(i)));
-    }
-    std::vector<std::shared_ptr<ftxui::ComponentBase>> hoverable_checkboxes, hovering_renderers;
-    for (i = 0; i < checkbox_labels_.size(); i++) {
-        auto checkbox_option = ftxui::CheckboxOption();
-        auto checkbox_status = checkbox_status_.at(i).get();
-        auto label = checkbox_labels_.at(i);
-        auto iter_value = i;
-        auto checkbox_decorator = [&label, &checkbox_status, &iter_value, &checkboxLabel](
-                const ftxui::EntryState &state) {
-            std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
-                                                                                      : ftxui::nothing;
-            if (state.state) {
-                base_style = base_style | color(ftxui::Color::Green);
-            } else {
-                base_style = base_style;
-            }
-
-            return ftxui::hbox({
-                                       ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
-                                       ftxui::text(state.state ? L"✅" : L" ") | base_style,
-                                       ftxui::text(L"] ") | base_style,
-                                       ftxui::text(checkboxLabel(label, checkbox_status)) | base_style,
-                               });
-        };
-        checkbox_option.transform = checkbox_decorator;
-        auto cb = ftxui::Checkbox(&checkbox_labels_.at(i), checkbox_status, checkbox_option);
-        auto hoverable_cb = Hoverable(cb,
-                                      [&, i]() { *checkbox_hovered_status_.at(i) = true; },
-                                      [&, i]() { *checkbox_hovered_status_.at(i) = false; });
-        hoverable_checkboxes.push_back(hoverable_cb);
-
-        auto &hovered_status = checkbox_hovered_status_.at(i);
-        auto &hover_text = checkbox_comments_.at(i);
-
-        auto hover_text_renderer = ftxui::Renderer([&hovered_status, &hover_text]() {
-            if (hovered_status) {
-                // Convert hover_text from std::wstring to std::string.
-                std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
-                std::vector<std::string> lines;
-                std::istringstream iss(hover_text_str);
-                for (std::string line; std::getline(iss, line);) {
-                    lines.push_back(line);
-                }
-                std::vector<ftxui::Element> elements;
-                elements.reserve(lines.size());
-                for (const auto &line: lines) {
-                    elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
-                }
-                return ftxui::vbox(elements) | ftxui::center;
-            } else {
-                return nothing(ftxui::text(""));
-            }
-        });
-        hovering_renderers.push_back(hover_text_renderer);
-    }
-    for (i = 0; i < hoverable_checkboxes.size(); i++) {
-        components.push_back(hoverable_checkboxes.at(i));
-        components.push_back(hovering_renderers.at(i));
-    }
-    return components;
-}
-
 /*
  * Personal methods
  */
 std::vector<FileContainer> loadMarkdownContainers(std::vector<markdownFile> &markdowns) {
     std::vector<FileContainer> containers;
-    std::vector<std::thread> threads;
     size_t parseableMarkdowns = std::count_if(markdowns.begin(), markdowns.end(), [](const markdownFile &m) {
         return m.isParseable;
     });
@@ -131,40 +44,62 @@ std::vector<FileContainer> loadMarkdownContainers(std::vector<markdownFile> &mar
     for (const auto &f: markdowns) {
         if (!f.isParseable) { continue; }
         containers.emplace_back(f.filePath);
-        threads.emplace_back(&FileContainer::Parse, &containers.back());
-    }
-    for (auto &t: threads) {
-        t.join();
+        containers.back().Parse();
     }
     return containers;
 }
 
-int main() {
-    // Initialization steps
-    // Init Screen
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
-
-    StateTracker &stateTracker = StateTracker::getInstance();
-    // Read from config file
-    auto mdPaths = checkTempFileAndGetFiles();
-
-    // Setup markdown files
-    auto &focus_selector = stateTracker.getFocusSelector();
-    focus_selector = 0;
-    auto &menu_selector = stateTracker.getMenuSelector();
-    menu_selector = -1;
-
+std::vector<markdownFile> getMarkdownVector(std::vector<std::filesystem::path> &mdPaths) {
     std::vector<markdownFile> markdowns;
     markdowns.reserve(mdPaths.size());
+    // Set file names to entries
     for (const auto &path: mdPaths) {
         markdownFile m;
         m.filePath = path;
         m.fileName = path.filename().string();
         m.isParseable = isValidMarkdownFile(path.string());
-        markdowns.push_back(std::move(m));
+        markdowns.push_back(m);
     }
+    return markdowns;
+}
+
+/*
+ * Main method (start point)
+ */
+int main() {
+    // Initialization steps
+    // Init Screen
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
+    StateTracker &stateTracker = StateTracker::getInstance();
+
+    // Read from config file
+    auto mdPaths = checkTempFileAndGetFiles();
+    auto markdowns = getMarkdownVector(mdPaths);
     auto markDownContainers = loadMarkdownContainers(markdowns);
 
+    // Variables
+    auto &focus_selector = stateTracker.getFocusSelector();
+    focus_selector = 0;
+    auto &menu_selector = stateTracker.getMenuSelector();
+    menu_selector = -1;
+
+    // Update Button
+    std::string input_value;
+    auto input_component = ftxui::Input(&input_value, "Enter text...");
+    std::wstring hover_text;
+    auto updateButton = UpdateButton(hover_text, input_value);
+
+    // Time Renderer
+    auto timeRenderer = ftxui::Renderer([&] {
+        std::string time_str = getCurrentTime();
+        return ftxui::text(time_str)
+               | color(ftxui::Color::CornflowerBlue)
+               | ftxui::bold
+               | ftxui::center
+               | ftxui::border;
+    });
+
+    // Menu related
     std::vector<std::string> menuEntries;
     std::vector<bool> statusFlags;
     auto menuContainer = ftxui::Container::Vertical({});
@@ -182,16 +117,99 @@ int main() {
         statusContainer->Add(status);
     }
 
+    // Task UI
+    auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::wstring {
+        auto local_label = convertToWideString(label);
+        if (checkbox_status) {
+            std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            local_label.insert(0, timeModded);
+        }
+        return local_label;
+    };
+
+    auto taskComponentContainer = ftxui::Container::Vertical({});
+    std::vector<std::shared_ptr<std::string>> checkbox_labels;
+    std::vector<std::shared_ptr<std::wstring>> checkbox_comments;
+    std::vector<std::shared_ptr<bool>> checkbox_statuses, checkbox_hovered_statuses;
+    std::vector<std::shared_ptr<int>> iteration_range_values;
+
     // Define the callback function
     auto fileSelectorCallback = [&]() {
         if (!statusFlags.at(menu_selector)) {
-            // Set focus on error screen
             focus_selector = 2;
         } else {
-            // Set focus on Task UI
-            auto children = modifyTaskContainer(markDownContainers.at(menu_selector));
-            for (const auto &child: children) {
-                taskSpecificContainer->Add(child);
+            taskComponentContainer.get()->DetachAllChildren();
+            auto focused_file_container = markDownContainers.at(menu_selector);
+            auto currentContainerSize = focused_file_container.getTasks().size();
+            checkbox_labels.clear();
+            checkbox_comments.clear();
+            checkbox_hovered_statuses.clear();
+            iteration_range_values.clear();
+            checkbox_statuses.clear();
+            size_t i;
+            for (i = 0; i < currentContainerSize; i++) {
+                checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
+                checkbox_comments.emplace_back(
+                        std::make_shared<std::wstring>(convertToWideString(focused_file_container.getComments()[i])));
+                checkbox_statuses.push_back(std::make_shared<bool>(false));
+                checkbox_hovered_statuses.push_back(std::make_shared<bool>(false));
+                iteration_range_values.push_back(std::make_shared<int>(i + 1));
+            }
+            for (i = 0; i < currentContainerSize; i++) {
+                auto checkbox_option = ftxui::CheckboxOption();
+                auto checkbox_status_ptr = checkbox_statuses[i];
+                auto label_ptr = checkbox_labels[i];
+                auto iter_value_ptr = iteration_range_values[i];
+                auto checkbox_decorator = [label_ptr, checkbox_status_ptr, iter_value_ptr, &checkboxLabel](
+                        const ftxui::EntryState &state) {
+                    auto &label = *label_ptr;
+                    auto &checkbox_status = *checkbox_status_ptr;
+                    auto &iter_value = *iter_value_ptr;
+                    std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
+                                                                                              : ftxui::nothing;
+                    if (state.state) {
+                        base_style = base_style | color(ftxui::Color::Green);
+                    } else {
+                        base_style = base_style;
+                    }
+
+                    return ftxui::hbox({
+                                               ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
+                                               ftxui::text(state.state ? L"✅" : L" ") | base_style,
+                                               ftxui::text(L"] ") | base_style,
+                                               ftxui::text(checkboxLabel(label, checkbox_status)) | base_style,
+                                       });
+                };
+                checkbox_option.transform = checkbox_decorator;
+                auto cb = ftxui::Checkbox(checkbox_labels[i].get(), checkbox_statuses[i].get(), checkbox_option);
+                auto hoverable_cb = Hoverable(cb,
+                                              [&, i]() { *checkbox_hovered_statuses[i] = true; },
+                                              [&, i]() { *checkbox_hovered_statuses[i] = false; });
+                taskComponentContainer.get()->Add(hoverable_cb);
+                auto hovered_status_ptr = checkbox_hovered_statuses[i];
+                auto hover_text_ptr = checkbox_comments[i];
+                auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
+                    auto &hovered_status = *hovered_status_ptr;
+                    auto &hover_text = *hover_text_ptr;
+                    if (hovered_status) {
+                        // Convert hover_text from std::wstring to std::string.
+                        std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
+                        std::vector<std::string> lines;
+                        std::istringstream iss(hover_text_str);
+                        for (std::string line; std::getline(iss, line);) {
+                            lines.push_back(line);
+                        }
+                        std::vector<ftxui::Element> elements;
+                        elements.reserve(lines.size());
+                        for (const auto &line: lines) {
+                            elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
+                        }
+                        return ftxui::vbox(elements) | ftxui::center;
+                    } else {
+                        return nothing(ftxui::text(""));
+                    }
+                });
+                taskComponentContainer.get()->Add(hover_text_renderer);
             }
             focus_selector = 1;
         }
@@ -202,6 +220,8 @@ int main() {
     file_menu_option.on_enter = fileSelectorCallback;
 
     menuContainer->Add(ftxui::Menu(&menuEntries, &menu_selector, file_menu_option));
+
+    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
 
     auto fileSelectorContainer = ftxui::Container::Vertical({
                                                                     ftxui::Renderer([] {
@@ -244,27 +264,9 @@ int main() {
                                                                              messageButtonCallback)
                                                        }) | ftxui::border | ftxui::center;
 
-    std::string input_value;
-    // Components
-    auto input_component = ftxui::Input(&input_value, "Enter text...");
-
-    // Lambdas
-    std::wstring hover_text;
-    auto updateButton = UpdateButton(hover_text, input_value);
-
-    auto timeRenderer = ftxui::Renderer([&] {
-        std::string time_str = getCurrentTime();
-        return ftxui::text(time_str)
-               | color(ftxui::Color::CornflowerBlue)
-               | ftxui::bold
-               | ftxui::center
-               | ftxui::border;
-    });
-
-    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
     auto taskContainer = ftxui::Container::Vertical({
                                                             timeRenderer,
-                                                            taskSpecificContainer,
+                                                            taskComponentContainer,
                                                             filler_component,
                                                             ftxui::Container::Horizontal({
                                                                                                  input_component |
@@ -282,7 +284,6 @@ int main() {
                                                     });
 
 
-
     // Replace the main component with the engine wrapper
     auto applicationContainer = ftxui::Container::Tab({
                                                               fileSelectorContainer,
@@ -296,8 +297,8 @@ int main() {
         runEngine = false;
         ClearDOSPromptScreen();
     };
-    auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
 
+    auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
 
     // Run the application in a loop.
     std::thread([&] {
