@@ -1,6 +1,5 @@
 # Make milkshakes
 
-> Cars outside slow
 - Get bananas
 - Get milk
 - Get mixer

@@ -6,7 +6,9 @@
 #define POSTOPEK_PERSONALCOMPONENTS_H
 
 #include "ftxui/component/component.hpp"
+#include "MD_parser.h"
 #include <string>
+
 
 class UpdateButton {
 public:
@@ -19,5 +21,6 @@ private:
     std::string &input_value_;
     ftxui::Component button_;
 };
+
 
 #endif //POSTOPEK_PERSONALCOMPONENTS_H
