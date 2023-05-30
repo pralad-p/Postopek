@@ -205,7 +205,7 @@ int main() {
                             elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
                         }
                         return hover_text_str.empty() ? nothing(ftxui::text("")) : (ftxui::vbox(elements) |
-                                                                                    ftxui::frame | ftxui::border |
+                                                                                    ftxui::focus | ftxui::border |
                                                                                     ftxui::center);
                     } else {
                         return nothing(ftxui::text(""));
