@@ -128,6 +128,14 @@ int main() {
     };
 
     auto taskComponentContainer = ftxui::Container::Vertical({});
+    std::shared_ptr<std::string> task_header;
+
+    auto taskHeaderContainer = ftxui::Renderer([&task_header] {
+        return task_header->empty() ? ftxui::nothing(ftxui::text(""))
+                                    : (ftxui::text("    " + *task_header + "    ") | ftxui::border | ftxui::inverted |
+                                       ftxui::center);
+    });
+
     std::vector<std::shared_ptr<std::string>> checkbox_labels;
     std::vector<std::shared_ptr<std::wstring>> checkbox_comments;
     std::vector<std::shared_ptr<bool>> checkbox_statuses, checkbox_hovered_statuses;
@@ -146,7 +154,9 @@ int main() {
             checkbox_hovered_statuses.clear();
             iteration_range_values.clear();
             checkbox_statuses.clear();
+            task_header = std::make_shared<std::string>(focused_file_container.getHeader());
             size_t i;
+            taskComponentContainer.get()->Add(taskHeaderContainer);
             for (i = 0; i < currentContainerSize; i++) {
                 checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
                 checkbox_comments.emplace_back(
@@ -204,11 +214,12 @@ int main() {
                         for (const auto &line: lines) {
                             elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
                         }
-                        return hover_text_str.empty() ? nothing(ftxui::text("")) : (ftxui::vbox(elements) |
-                                                                                    ftxui::focus | ftxui::border |
-                                                                                    ftxui::center);
+                        return hover_text_str.empty() ? ftxui::nothing(ftxui::text("")) : (ftxui::vbox(elements) |
+                                                                                           ftxui::focus |
+                                                                                           ftxui::border |
+                                                                                           ftxui::center);
                     } else {
-                        return nothing(ftxui::text(""));
+                        return ftxui::nothing(ftxui::text(""));
                     }
                 });
                 taskComponentContainer.get()->Add(hover_text_renderer);
@@ -268,7 +279,8 @@ int main() {
 
     auto taskContainer = ftxui::Container::Vertical({
                                                             timeRenderer,
-                                                            taskComponentContainer,
+                                                            taskComponentContainer | ftxui::frame |
+                                                            ftxui::vscroll_indicator,
                                                             filler_component,
                                                             ftxui::Container::Horizontal({
                                                                                                  input_component |
