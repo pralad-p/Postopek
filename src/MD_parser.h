@@ -17,17 +17,11 @@ public:
 
     void Parse();
 
-    const std::string &getHeader() const;
+    [[nodiscard]] const std::string &getHeader() const;
 
-    void setHeader(const std::string &header);
+    [[nodiscard]] const std::vector<std::string> &getTasks() const;
 
-    const std::vector<std::string> &getTasks() const;
-
-    void setTasks(const std::vector<std::string> &tasks);
-
-    const std::vector<std::string> &getComments() const;
-
-    void setComments(const std::vector<std::string> &comments);
+    [[nodiscard]] const std::vector<std::string> &getComments() const;
 
 private:
     bool has_been_modified_;
