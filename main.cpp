@@ -146,7 +146,7 @@ int main() {
         if (!statusFlags.at(menu_selector)) {
             focus_selector = 2;
         } else {
-            taskComponentContainer.get()->DetachAllChildren();
+            taskComponentContainer->DetachAllChildren();
             auto focused_file_container = markDownContainers.at(menu_selector);
             auto currentContainerSize = focused_file_container.getTasks().size();
             checkbox_labels.clear();
@@ -156,7 +156,7 @@ int main() {
             checkbox_statuses.clear();
             task_header = std::make_shared<std::string>(focused_file_container.getHeader());
             size_t i;
-            taskComponentContainer.get()->Add(taskHeaderContainer);
+            taskComponentContainer->Add(taskHeaderContainer);
             for (i = 0; i < currentContainerSize; i++) {
                 checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
                 checkbox_comments.emplace_back(
@@ -195,7 +195,7 @@ int main() {
                 auto hoverable_cb = Hoverable(cb,
                                               [&, i]() { *checkbox_hovered_statuses[i] = true; },
                                               [&, i]() { *checkbox_hovered_statuses[i] = false; });
-                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer->Add(hoverable_cb);
                 auto hovered_status_ptr = checkbox_hovered_statuses[i];
                 auto hover_text_ptr = checkbox_comments[i];
                 auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
@@ -222,7 +222,7 @@ int main() {
                         return ftxui::nothing(ftxui::text(""));
                     }
                 });
-                taskComponentContainer.get()->Add(hover_text_renderer);
+                taskComponentContainer->Add(hover_text_renderer);
             }
             focus_selector = 1;
         }
@@ -307,7 +307,7 @@ int main() {
 
     bool runEngine = true;
     auto quitMethod = [&screen, &runEngine]() {
-        screen.Exit();
+        screen.ExitLoopClosure()();
         runEngine = false;
         ClearDOSPromptScreen();
     };
