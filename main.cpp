@@ -83,11 +83,36 @@ int main() {
     auto &menu_selector = stateTracker.getMenuSelector();
     menu_selector = -1;
 
-    // Update Button
-    std::string input_value;
-    auto input_component = ftxui::Input(&input_value, "Enter text...");
+    std::shared_ptr<std::string> content = std::make_shared<std::string>();
+    auto input_option = ftxui::InputOption();
+
+    auto on_enter_wildcard = [content, &input_option]() {
+        std::regex newTaskPattern("ant (\\d+)");
+        std::regex newCommentPattern("acc (\\d+)");
+        std::regex wildCardPattern("<!.+>");
+        std::smatch matches;
+        bool wildCardSet = false;
+        if (std::regex_search(*content, matches, wildCardPattern)) {
+            wildCardSet = true;
+        }
+        if (!wildCardSet) {
+            if (std::regex_search(*content, matches, newTaskPattern)) {
+                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
+            } else if (std::regex_search(*content, matches, newCommentPattern)) {
+                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
+            }
+            // Place the cursor after the size of content.
+            input_option.cursor_position = static_cast<int>(content->size());
+        }
+    };
+
+    input_option.on_enter = on_enter_wildcard;
+
+// Create the Input component with the InputOption.
+    auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
+
     std::wstring hover_text;
-    auto updateButton = UpdateButton(hover_text, input_value);
+    auto updateButton = UpdateButton(hover_text, *content);
 
     // Time Renderer
     auto timeRenderer = ftxui::Renderer([&] {
@@ -128,6 +153,14 @@ int main() {
     };
 
     auto taskComponentContainer = ftxui::Container::Vertical({});
+    std::shared_ptr<std::string> task_header;
+
+    auto taskHeaderContainer = ftxui::Renderer([&task_header] {
+        return task_header->empty() ? ftxui::nothing(ftxui::text(""))
+                                    : (ftxui::text("    " + *task_header + "    ") | ftxui::border | ftxui::inverted |
+                                       ftxui::center);
+    });
+
     std::vector<std::shared_ptr<std::string>> checkbox_labels;
     std::vector<std::shared_ptr<std::wstring>> checkbox_comments;
     std::vector<std::shared_ptr<bool>> checkbox_statuses, checkbox_hovered_statuses;
@@ -138,7 +171,7 @@ int main() {
         if (!statusFlags.at(menu_selector)) {
             focus_selector = 2;
         } else {
-            taskComponentContainer.get()->DetachAllChildren();
+            taskComponentContainer->DetachAllChildren();
             auto focused_file_container = markDownContainers.at(menu_selector);
             auto currentContainerSize = focused_file_container.getTasks().size();
             checkbox_labels.clear();
@@ -146,7 +179,9 @@ int main() {
             checkbox_hovered_statuses.clear();
             iteration_range_values.clear();
             checkbox_statuses.clear();
+            task_header = std::make_shared<std::string>(focused_file_container.getHeader());
             size_t i;
+            taskComponentContainer->Add(taskHeaderContainer);
             for (i = 0; i < currentContainerSize; i++) {
                 checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
                 checkbox_comments.emplace_back(
@@ -185,7 +220,7 @@ int main() {
                 auto hoverable_cb = Hoverable(cb,
                                               [&, i]() { *checkbox_hovered_statuses[i] = true; },
                                               [&, i]() { *checkbox_hovered_statuses[i] = false; });
-                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer->Add(hoverable_cb);
                 auto hovered_status_ptr = checkbox_hovered_statuses[i];
                 auto hover_text_ptr = checkbox_comments[i];
                 auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
@@ -204,14 +239,15 @@ int main() {
                         for (const auto &line: lines) {
                             elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
                         }
-                        return hover_text_str.empty() ? nothing(ftxui::text("")) : (ftxui::vbox(elements) |
-                                                                                    ftxui::focus | ftxui::border |
-                                                                                    ftxui::center);
+                        return hover_text_str.empty() ? ftxui::nothing(ftxui::text("")) : (ftxui::vbox(elements) |
+                                                                                           ftxui::focus |
+                                                                                           ftxui::border |
+                                                                                           ftxui::center);
                     } else {
-                        return nothing(ftxui::text(""));
+                        return ftxui::nothing(ftxui::text(""));
                     }
                 });
-                taskComponentContainer.get()->Add(hover_text_renderer);
+                taskComponentContainer->Add(hover_text_renderer);
             }
             focus_selector = 1;
         }
@@ -268,7 +304,8 @@ int main() {
 
     auto taskContainer = ftxui::Container::Vertical({
                                                             timeRenderer,
-                                                            taskComponentContainer,
+                                                            taskComponentContainer | ftxui::frame |
+                                                            ftxui::vscroll_indicator,
                                                             filler_component,
                                                             ftxui::Container::Horizontal({
                                                                                                  input_component |
@@ -281,7 +318,7 @@ int main() {
                                                                                    ftxui::text(
                                                                                            "ant # ▶️ Add new task after #   "),
                                                                                    ftxui::text(
-                                                                                           "ecc # ▶️ Edit #'s comment"));
+                                                                                           "acc # ▶️ Add comment for #"));
                                                             })
                                                     });
 
@@ -295,7 +332,7 @@ int main() {
 
     bool runEngine = true;
     auto quitMethod = [&screen, &runEngine]() {
-        screen.Exit();
+        screen.ExitLoopClosure()();
         runEngine = false;
         ClearDOSPromptScreen();
     };
