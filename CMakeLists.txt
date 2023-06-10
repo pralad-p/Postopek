@@ -29,7 +29,6 @@ set(SOURCES
         main.cpp
         src/utils.cpp
         src/Application.cpp
-        src/components/personalComponents.cpp
         src/validation.cpp
         src/MD_parser.cpp
         )
@@ -37,7 +36,6 @@ set(SOURCES
 set(HEADERS
         src/utils.h
         src/Application.h
-        src/components/personalComponents.h
         src/validation.h
         src/windows_utils.h
         src/StateTracker.h
