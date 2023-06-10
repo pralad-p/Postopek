@@ -83,11 +83,36 @@ int main() {
     auto &menu_selector = stateTracker.getMenuSelector();
     menu_selector = -1;
 
-    // Update Button
-    std::string input_value;
-    auto input_component = ftxui::Input(&input_value, "Enter text...");
+    std::shared_ptr<std::string> content = std::make_shared<std::string>();
+    auto input_option = ftxui::InputOption();
+
+    auto on_enter_wildcard = [content, &input_option]() {
+        std::regex newTaskPattern("ant (\\d+)");
+        std::regex newCommentPattern("acc (\\d+)");
+        std::regex wildCardPattern("<!.+>");
+        std::smatch matches;
+        bool wildCardSet = false;
+        if (std::regex_search(*content, matches, wildCardPattern)) {
+            wildCardSet = true;
+        }
+        if (!wildCardSet) {
+            if (std::regex_search(*content, matches, newTaskPattern)) {
+                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
+            } else if (std::regex_search(*content, matches, newCommentPattern)) {
+                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
+            }
+            // Place the cursor after the size of content.
+            input_option.cursor_position = static_cast<int>(content->size());
+        }
+    };
+
+    input_option.on_enter = on_enter_wildcard;
+
+// Create the Input component with the InputOption.
+    auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
+
     std::wstring hover_text;
-    auto updateButton = UpdateButton(hover_text, input_value);
+    auto updateButton = UpdateButton(hover_text, *content);
 
     // Time Renderer
     auto timeRenderer = ftxui::Renderer([&] {
@@ -293,7 +318,7 @@ int main() {
                                                                                    ftxui::text(
                                                                                            "ant # ▶️ Add new task after #   "),
                                                                                    ftxui::text(
-                                                                                           "ecc # ▶️ Edit #'s comment"));
+                                                                                           "acc # ▶️ Add comment for #"));
                                                             })
                                                     });
 
