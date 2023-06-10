@@ -18,10 +18,10 @@
  */
 #include "utils.h"
 #include "Application.h"
-#include "components/personalComponents.h"
 #include "validation.h"
 #include "StateTracker.h"
 #include "windows_utils.h"
+#include "MD_parser.h"
 
 /*
  * Personal data structures
@@ -63,6 +63,17 @@ std::vector<markdownFile> getMarkdownVector(std::vector<std::filesystem::path> &
     return markdowns;
 }
 
+int getTaskNumber(const std::smatch &matches) {
+    std::string taskNumberString = matches.str(1);
+    int taskNumber = std::stoi(taskNumberString);
+    return taskNumber;
+}
+
+bool isGoodTaskNumber(const std::smatch &matches, int start, int end) {
+    int taskNumber = getTaskNumber(matches);
+    return ((taskNumber >= start) && (taskNumber <= end));
+}
+
 /*
  * Main method (start point)
  */
@@ -83,46 +94,7 @@ int main() {
     auto &menu_selector = stateTracker.getMenuSelector();
     menu_selector = -1;
 
-    std::shared_ptr<std::string> content = std::make_shared<std::string>();
-    auto input_option = ftxui::InputOption();
-
-    auto on_enter_wildcard = [content, &input_option]() {
-        std::regex newTaskPattern("ant (\\d+)");
-        std::regex newCommentPattern("acc (\\d+)");
-        std::regex wildCardPattern("<!.+>");
-        std::smatch matches;
-        bool wildCardSet = false;
-        if (std::regex_search(*content, matches, wildCardPattern)) {
-            wildCardSet = true;
-        }
-        if (!wildCardSet) {
-            if (std::regex_search(*content, matches, newTaskPattern)) {
-                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
-            } else if (std::regex_search(*content, matches, newCommentPattern)) {
-                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
-            }
-            // Place the cursor after the size of content.
-            input_option.cursor_position = static_cast<int>(content->size());
-        }
-    };
-
-    input_option.on_enter = on_enter_wildcard;
-
-// Create the Input component with the InputOption.
-    auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
-
-    std::wstring hover_text;
-    auto updateButton = UpdateButton(hover_text, *content);
-
-    // Time Renderer
-    auto timeRenderer = ftxui::Renderer([&] {
-        std::string time_str = getCurrentTime();
-        return ftxui::text(time_str)
-               | color(ftxui::Color::CornflowerBlue)
-               | ftxui::bold
-               | ftxui::center
-               | ftxui::border;
-    });
+    // UI Divisions
 
     // Menu related
     std::vector<std::string> menuEntries;
@@ -141,6 +113,20 @@ int main() {
         });
         statusContainer->Add(status);
     }
+
+
+    // Time Renderer
+    auto timeRenderer = ftxui::Renderer([&] {
+        std::string time_str = getCurrentTime();
+        return ftxui::text(time_str)
+               | color(ftxui::Color::CornflowerBlue)
+               | ftxui::bold
+               | ftxui::center
+               | ftxui::border;
+    });
+
+
+
 
     // Task UI
     auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::wstring {
@@ -259,8 +245,69 @@ int main() {
 
     menuContainer->Add(ftxui::Menu(&menuEntries, &menu_selector, file_menu_option));
 
-    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
 
+    // Input Box and Update button
+    std::shared_ptr<std::string> content = std::make_shared<std::string>();
+    auto input_option = ftxui::InputOption();
+    auto on_enter_wildcard = [content, &input_option]() {
+        std::regex newTaskPattern("ant (\\d+)");
+        std::regex newCommentPattern("acc (\\d+)");
+        std::regex changeTaskPattern("ctt (\\d+)");
+        std::regex wildCardPattern("<!.+>");
+        std::smatch matches;
+        bool wildCardSet = false;
+        if (std::regex_search(*content, matches, wildCardPattern)) {
+            wildCardSet = true;
+        }
+        if (!wildCardSet) {
+            if (std::regex_search(*content, matches, newTaskPattern)) {
+                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
+            } else if (std::regex_search(*content, matches, newCommentPattern)) {
+                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
+            } else if (std::regex_search(*content, matches, changeTaskPattern)) {
+                *content = std::regex_replace(*content, changeTaskPattern, "<!change-task-$1>");
+            }
+            // Place the cursor after the size of content.
+            input_option.cursor_position = static_cast<int>(content->size());
+        }
+    };
+
+    input_option.on_enter = on_enter_wildcard;
+    auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
+    std::wstring hover_text;
+    auto onUpdate = [&content, &iteration_range_values, &checkbox_comments, &checkbox_labels] {
+        std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
+        std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
+        std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
+        std::smatch matches;
+        if (std::regex_search(*content, matches, newTaskPattern) && matches.size() > 1) {
+            if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
+            // TODO have to add a new task after task number
+
+
+        } else if (std::regex_search(*content, matches, newCommentPattern) && matches.size() > 1) {
+            if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
+            int taskNumber = getTaskNumber(matches);
+            auto newContent = matches.str(2);
+            auto &current_comment = *checkbox_comments[taskNumber - 1];
+            if (!current_comment.empty()) {
+                current_comment += L"\n";
+            }
+            current_comment += L"- [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            current_comment += convertToWideString(newContent);
+            content->clear();
+        } else if (std::regex_search(*content, matches, changeTaskPattern) && matches.size() > 1) {
+            if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
+            int taskNumber = getTaskNumber(matches);
+            auto updatedTask = matches.str(2);
+            auto &current_task = *checkbox_labels[taskNumber - 1];
+            current_task = updatedTask;
+            content->clear();
+        }
+    };
+    auto updateButton = ftxui::Button("Update", onUpdate);
+
+    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
     auto fileSelectorContainer = ftxui::Container::Vertical({
                                                                     ftxui::Renderer([] {
                                                                         return ftxui::text("Select process") |
@@ -310,7 +357,7 @@ int main() {
                                                             ftxui::Container::Horizontal({
                                                                                                  input_component |
                                                                                                  ftxui::borderRounded,
-                                                                                                 updateButton()
+                                                                                                 updateButton
                                                                                          }),
                                                             ftxui::Renderer([] {
                                                                 return ftxui::hbox(ftxui::text("Ctrl+S ▶️ Save   "),
