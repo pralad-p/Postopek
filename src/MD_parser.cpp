@@ -7,7 +7,6 @@
 
 FileContainer::FileContainer(const std::filesystem::path &p) {
     file_path_ = p;
-    has_been_modified_ = false;
 }
 
 void FileContainer::Parse() {

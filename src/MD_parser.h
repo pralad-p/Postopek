@@ -24,7 +24,6 @@ public:
     [[nodiscard]] const std::vector<std::string> &getComments() const;
 
 private:
-    bool has_been_modified_;
     std::filesystem::path file_path_;
     std::string header_;
     std::vector<std::string> tasks_;
