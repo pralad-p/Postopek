@@ -1,5 +1,6 @@
 # Postopek
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Build CI](https://github.com/pralad-p/Postopek/actions/workflows/cmake.yml/badge.svg?branch=master)](https://github.com/pralad-p/Postopek/actions/workflows/cmake.yml)
 
 Postopek is a Procedure CLI application for Windows, designed for handling checklists with a unique
 time-tracking feature. It was made to be minimalist and allows to focus on one task to its completion.
