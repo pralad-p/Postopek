@@ -464,6 +464,18 @@ int main() {
                                                             })
                                                     });
 
+    taskContainer |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+        if (event == ftxui::Event::Tab) {
+            bool inputBarFocused = taskContainer->ChildAt(0)->ChildAt(3)->ChildAt(0)->Focused();
+            if (!inputBarFocused) {
+                taskContainer->ChildAt(0)->ChildAt(3)->ChildAt(0)->TakeFocus();
+                return true;
+            }
+            return false;
+        }
+        return true;
+    });
+
 
     // Replace the main component with the engine wrapper
     auto applicationContainer = ftxui::Container::Tab({
