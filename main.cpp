@@ -16,12 +16,12 @@
 /*
  * Own module libraries
  */
-#include "utils.h"
+#include "Utilities.h"
 #include "Application.h"
-#include "validation.h"
+#include "ValidationCheck.h"
 #include "StateTracker.h"
-#include "windows_utils.h"
-#include "MD_parser.h"
+#include "WindowsUtilities.h"
+#include "MarkdownParser.h"
 
 /*
  * Personal data structures
@@ -386,7 +386,7 @@ int main() {
             if (!current_comment.empty()) {
                 current_comment += L"\n";
             }
-            current_comment += L"- [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            current_comment += L" => [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
             current_comment += convertToWideString(newContent);
             content->clear();
         } else if (std::regex_search(*content, matches, changeTaskPattern) && matches.size() > 1) {
@@ -471,9 +471,8 @@ int main() {
                 taskContainer->ChildAt(0)->ChildAt(3)->ChildAt(0)->TakeFocus();
                 return true;
             }
-            return false;
         }
-        return true;
+        return false;
     });
 
 
