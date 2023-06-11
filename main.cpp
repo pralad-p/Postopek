@@ -26,6 +26,7 @@
 /*
  * Personal data structures
  */
+
 typedef struct markdownFile_ {
     std::filesystem::path filePath;
     std::string fileName;
@@ -275,16 +276,108 @@ int main() {
     input_option.on_enter = on_enter_wildcard;
     auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
     std::wstring hover_text;
-    auto onUpdate = [&content, &iteration_range_values, &checkbox_comments, &checkbox_labels] {
+    auto onUpdate = [&content, &iteration_range_values, &checkbox_comments, &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses, &checkbox_statuses, &checkboxLabel] {
         std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
         std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
         std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
         std::smatch matches;
         if (std::regex_search(*content, matches, newTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
-            // TODO have to add a new task after task number
+            // get task number
+            int taskNumber = getTaskNumber(matches);
+            auto newTaskContent = matches.str(2);
+            // insert new item in lists
+            checkbox_labels.insert(checkbox_labels.begin() + taskNumber, std::make_shared<std::string>(newTaskContent));
+            checkbox_comments.insert(checkbox_comments.begin() + taskNumber, std::make_shared<std::wstring>());
+            checkbox_statuses.insert(checkbox_statuses.begin() + taskNumber, std::make_shared<bool>(false));
+            checkbox_hovered_statuses.insert(checkbox_hovered_statuses.begin() + taskNumber,
+                                             std::make_shared<bool>(false));
+            if (taskNumber == checkbox_labels.size() - 1) {
+                iteration_range_values.push_back(
+                        std::make_shared<int>(iteration_range_values.size() + 1));
+            } else {
+                iteration_range_values.insert(iteration_range_values.begin() + taskNumber,
+                                              std::make_shared<int>(taskNumber + 1));
+                for (int i = taskNumber + 1; i < iteration_range_values.size(); i++) {
+                    *iteration_range_values[i] += 1;
+                }
+            }
+            // remove and add new element in Task container
+            auto checkbox_option = ftxui::CheckboxOption();
+            auto checkbox_status_ptr = checkbox_statuses[taskNumber];
+            auto label_ptr = checkbox_labels[taskNumber];
+            auto iter_value_ptr = iteration_range_values[taskNumber];
+            auto checkbox_decorator = [label_ptr, checkbox_status_ptr, iter_value_ptr, &checkboxLabel](
+                    const ftxui::EntryState &state) {
+                auto &label = *label_ptr;
+                auto &checkbox_status = *checkbox_status_ptr;
+                auto &iter_value = *iter_value_ptr;
+                std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
+                                                                                          : ftxui::nothing;
+                if (state.state) {
+                    base_style = base_style | color(ftxui::Color::Green);
+                } else {
+                    base_style = base_style;
+                }
 
-
+                return ftxui::hbox({
+                                           ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
+                                           ftxui::text(state.state ? L"✅" : L" ") | base_style,
+                                           ftxui::text(L"] ") | base_style,
+                                           ftxui::text(checkboxLabel(label, checkbox_status)) | base_style,
+                                   });
+            };
+            checkbox_option.transform = checkbox_decorator;
+            auto cb = ftxui::Checkbox(checkbox_labels[taskNumber].get(), checkbox_statuses[taskNumber].get(),
+                                      checkbox_option);
+            auto hoverable_cb = Hoverable(cb,
+                                          [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = true; },
+                                          [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = false; });
+            auto hovered_status_ptr = checkbox_hovered_statuses[taskNumber];
+            auto hover_text_ptr = checkbox_comments[taskNumber];
+            auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
+                auto &hovered_status = *hovered_status_ptr;
+                auto &hover_text = *hover_text_ptr;
+                if (hovered_status) {
+                    // Convert hover_text from std::wstring to std::string.
+                    std::string hover_text_str = std::string(hover_text.begin(), hover_text.end());
+                    std::vector<std::string> lines;
+                    std::istringstream iss(hover_text_str);
+                    for (std::string line; std::getline(iss, line);) {
+                        lines.push_back(line);
+                    }
+                    std::vector<ftxui::Element> elements;
+                    elements.reserve(lines.size());
+                    for (const auto &line: lines) {
+                        elements.push_back(ftxui::text(line) | color(ftxui::Color::Red) | ftxui::bold);
+                    }
+                    return hover_text_str.empty() ? ftxui::nothing(ftxui::text("")) : (ftxui::vbox(elements) |
+                                                                                       ftxui::focus |
+                                                                                       ftxui::border |
+                                                                                       ftxui::center);
+                } else {
+                    return ftxui::nothing(ftxui::text(""));
+                }
+            });
+            if (taskNumber + 1 == checkbox_labels.size()) {
+                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer.get()->Add(hover_text_renderer);
+            } else {
+                int PREVIOUS_COMPONENT_SIZE = 1;
+                ftxui::Components postTaskComponents;
+                for (int i = ((taskNumber * 2) + PREVIOUS_COMPONENT_SIZE);
+                     i < ((checkbox_labels.size() - 1) * 2 + PREVIOUS_COMPONENT_SIZE); i++) {
+                    auto backIteratorIndex = (taskNumber * 2) + PREVIOUS_COMPONENT_SIZE;
+                    postTaskComponents.push_back(taskComponentContainer.get()->ChildAt(backIteratorIndex));
+                    taskComponentContainer.get()->ChildAt(backIteratorIndex)->Detach();
+                }
+                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer.get()->Add(hover_text_renderer);
+                for (const auto &comp: postTaskComponents) {
+                    taskComponentContainer.get()->Add(comp);
+                }
+            }
+            content->clear();
         } else if (std::regex_search(*content, matches, newCommentPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
@@ -365,7 +458,9 @@ int main() {
                                                                                    ftxui::text(
                                                                                            "ant # ▶️ Add new task after #   "),
                                                                                    ftxui::text(
-                                                                                           "acc # ▶️ Add comment for #"));
+                                                                                           "acc # ▶️ Add comment for #   "),
+                                                                                   ftxui::text(
+                                                                                           "ctt # ▶️ Change task for #"));
                                                             })
                                                     });
 
