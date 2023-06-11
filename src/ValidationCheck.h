@@ -2,8 +2,8 @@
 // Created by prlpr on 28/05/2023.
 //
 
-#ifndef POSTOPEK_VALIDATION_H
-#define POSTOPEK_VALIDATION_H
+#ifndef POSTOPEK_VALIDATIONCHECK_H
+#define POSTOPEK_VALIDATIONCHECK_H
 
 #include <iostream>
 #include <fstream>
@@ -14,4 +14,4 @@ bool isValid(const std::string &line);
 
 bool isValidMarkdownFile(const std::string &filename);
 
-#endif //POSTOPEK_VALIDATION_H
+#endif //POSTOPEK_VALIDATIONCHECK_H
