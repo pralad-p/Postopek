@@ -2,15 +2,15 @@
 // Created by prlpr on 20/05/2023.
 //
 
-#ifndef POSTOPEK_UTILS_H
-#define POSTOPEK_UTILS_H
+#ifndef POSTOPEK_UTILITIES_H
+#define POSTOPEK_UTILITIES_H
 
 #include <chrono>
 #include <ctime>
 #include <codecvt>
 #include <filesystem>
 #include <string>
-#include "validation.h"
+#include "ValidationCheck.h"
 
 std::string getCurrentTime();
 
@@ -26,4 +26,4 @@ static inline void trimStringInPlace(std::string &);
 
 std::vector<std::filesystem::path> checkTempFileAndGetFiles();
 
-#endif //POSTOPEK_UTILS_H
+#endif //POSTOPEK_UTILITIES_H

@@ -27,19 +27,19 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(SOURCES
         main.cpp
-        src/utils.cpp
+        src/Utilities.cpp
         src/Application.cpp
-        src/validation.cpp
-        src/MD_parser.cpp
+        src/ValidationCheck.cpp
+        src/MarkdownParser.cpp
         )
 
 set(HEADERS
-        src/utils.h
+        src/Utilities.h
         src/Application.h
-        src/validation.h
-        src/windows_utils.h
+        src/ValidationCheck.h
+        src/WindowsUtilities.h
         src/StateTracker.h
-        src/MD_parser.h
+        src/MarkdownParser.h
         )
 
 add_executable(Postopek)

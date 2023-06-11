@@ -3,7 +3,7 @@
 //
 
 #include <regex>
-#include "MD_parser.h"
+#include "MarkdownParser.h"
 
 FileContainer::FileContainer(const std::filesystem::path &p) {
     file_path_ = p;

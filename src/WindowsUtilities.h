@@ -2,8 +2,8 @@
 // Created by prlpr on 29/05/2023.
 //
 
-#ifndef POSTOPEK_WINDOWS_UTILS_H
-#define POSTOPEK_WINDOWS_UTILS_H
+#ifndef POSTOPEK_WINDOWSUTILITIES_H
+#define POSTOPEK_WINDOWSUTILITIES_H
 
 #ifdef _WIN32
 
@@ -49,4 +49,4 @@ void ClearDOSPromptScreen() {
 
 #endif
 
-#endif //POSTOPEK_WINDOWS_UTILS_H
+#endif //POSTOPEK_WINDOWSUTILITIES_H

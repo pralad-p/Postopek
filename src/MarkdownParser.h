@@ -2,8 +2,8 @@
 // Created by prlpr on 29/05/2023.
 //
 
-#ifndef POSTOPEK_MD_PARSER_H
-#define POSTOPEK_MD_PARSER_H
+#ifndef POSTOPEK_MARKDOWNPARSER_H
+#define POSTOPEK_MARKDOWNPARSER_H
 
 #include <string>
 #include <vector>
@@ -32,4 +32,4 @@ private:
 };
 
 
-#endif //POSTOPEK_MD_PARSER_H
+#endif //POSTOPEK_MARKDOWNPARSER_H
