@@ -94,7 +94,12 @@ int main() {
     focus_selector = 0;
     auto &menu_selector = stateTracker.getMenuSelector();
     menu_selector = -1;
-
+    auto &show_saved_status = stateTracker.getSaveStatusIndicator();
+    show_saved_status = false;
+    auto &incorrect_input_shortcut_indicator = stateTracker.getInputParseStatusIndicator();
+    incorrect_input_shortcut_indicator = false;
+    auto &incorrect_input_indicator = stateTracker.getInputValidationStatusIndicator();
+    incorrect_input_shortcut_indicator = false;
     // UI Divisions
 
     // Menu related
@@ -250,7 +255,7 @@ int main() {
     // Input Box and Update button
     std::shared_ptr<std::string> content = std::make_shared<std::string>();
     auto input_option = ftxui::InputOption();
-    auto on_enter_wildcard = [content, &input_option]() {
+    auto on_enter_wildcard = [content, &input_option, &incorrect_input_shortcut_indicator]() {
         std::regex newTaskPattern("ant (\\d+)");
         std::regex newCommentPattern("acc (\\d+)");
         std::regex changeTaskPattern("ctt (\\d+)");
@@ -259,6 +264,13 @@ int main() {
         bool wildCardSet = false;
         if (std::regex_search(*content, matches, wildCardPattern)) {
             wildCardSet = true;
+        } else {
+            incorrect_input_shortcut_indicator = true;
+            // wait for 2 seconds
+            std::thread([&incorrect_input_shortcut_indicator]() {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                incorrect_input_shortcut_indicator = false;
+            }).detach();
         }
         if (!wildCardSet) {
             if (std::regex_search(*content, matches, newTaskPattern)) {
@@ -276,7 +288,9 @@ int main() {
     input_option.on_enter = on_enter_wildcard;
     auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
     std::wstring hover_text;
-    auto onUpdate = [&content, &iteration_range_values, &checkbox_comments, &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses, &checkbox_statuses, &checkboxLabel] {
+    auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
+            &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses,
+            &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator] {
         std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
         std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
         std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
@@ -396,11 +410,18 @@ int main() {
             auto &current_task = *checkbox_labels[taskNumber - 1];
             current_task = updatedTask;
             content->clear();
+        } else {
+            incorrect_input_indicator = true;
+            // wait for 2 seconds
+            std::thread([&incorrect_input_indicator]() {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                incorrect_input_indicator = false;
+            }).detach();
         }
     };
     auto updateButton = ftxui::Button("Update", onUpdate);
 
-    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
+//    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
     auto fileSelectorContainer = ftxui::Container::Vertical({
                                                                     ftxui::Renderer([] {
                                                                         return ftxui::text("Select process") |
@@ -442,35 +463,60 @@ int main() {
                                                                              messageButtonCallback)
                                                        }) | ftxui::border | ftxui::center;
 
+    auto statusBar = ftxui::Renderer(
+            [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator] {
+                if (show_saved_status) {
+                    return ftxui::text("Saved successfully!") | color(ftxui::Color::Green) | ftxui::bold;
+                } else if (incorrect_input_shortcut_indicator) {
+                    return ftxui::text("Parse Error: Trouble parsing shortcut") | color(ftxui::Color::Red) |
+                           ftxui::bold;
+                } else if (incorrect_input_indicator) {
+                    return ftxui::text("Parse Error: Trouble parsing input command") | color(ftxui::Color::Red) |
+                           ftxui::bold;
+                } else {
+                    return ftxui::hbox(ftxui::text("Ctrl+S ▶️ Save   "),
+                                       ftxui::text("qqq ▶️ Quit   "),
+                                       ftxui::text(
+                                               "ant # ▶️ Add new task after #   "),
+                                       ftxui::text(
+                                               "acc # ▶️ Add comment for #   "),
+                                       ftxui::text(
+                                               "ctt # ▶️ Change task for #"));
+                }
+            });
+
     auto taskContainer = ftxui::Container::Vertical({
                                                             timeRenderer,
                                                             taskComponentContainer | ftxui::frame |
-                                                            ftxui::vscroll_indicator,
-                                                            filler_component,
-                                                            ftxui::Container::Horizontal({
-                                                                                                 input_component |
-                                                                                                 ftxui::borderRounded,
-                                                                                                 updateButton
-                                                                                         }),
-                                                            ftxui::Renderer([] {
-                                                                return ftxui::hbox(ftxui::text("Ctrl+S ▶️ Save   "),
-                                                                                   ftxui::text("qqq ▶️ Quit   "),
-                                                                                   ftxui::text(
-                                                                                           "ant # ▶️ Add new task after #   "),
-                                                                                   ftxui::text(
-                                                                                           "acc # ▶️ Add comment for #   "),
-                                                                                   ftxui::text(
-                                                                                           "ctt # ▶️ Change task for #"));
-                                                            })
+                                                            ftxui::vscroll_indicator
                                                     });
 
-    taskContainer |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+    auto completeLayout = ftxui::Container::Vertical({
+                                                             taskContainer | ftxui::flex,
+                                                             ftxui::Container::Horizontal({
+                                                                                                  input_component |
+                                                                                                  ftxui::borderRounded,
+                                                                                                  updateButton
+                                                                                          }),
+                                                             statusBar
+                                                     });
+
+    completeLayout |= ftxui::CatchEvent([&](const ftxui::Event &event) {
         if (event == ftxui::Event::Tab) {
-            bool inputBarFocused = taskContainer->ChildAt(0)->ChildAt(3)->ChildAt(0)->Focused();
+            bool inputBarFocused = completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->Focused();
             if (!inputBarFocused) {
-                taskContainer->ChildAt(0)->ChildAt(3)->ChildAt(0)->TakeFocus();
+                completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->TakeFocus();
                 return true;
             }
+        } else if (event == ftxui::Event::Special({0x13})) {
+            // Perform the action associated with Ctrl+S
+            show_saved_status = true;
+            // wait for 2 seconds
+            std::thread([&show_saved_status]() {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                show_saved_status = false;
+            }).detach();
+            return true;
         }
         return false;
     });
@@ -479,7 +525,7 @@ int main() {
     // Replace the main component with the engine wrapper
     auto applicationContainer = ftxui::Container::Tab({
                                                               fileSelectorContainer,
-                                                              taskContainer,
+                                                              completeLayout,
                                                               messageContainer
                                                       }, &focus_selector);
 
