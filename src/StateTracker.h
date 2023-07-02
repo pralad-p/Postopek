@@ -20,6 +20,18 @@ public:
     int &getFocusSelector() {
         return focus_selector_;
     }
+
+    bool &getSaveStatusIndicator() {
+        return show_saved_status_;
+    }
+
+    bool &getInputParseStatusIndicator() {
+        return show_parse_status_;
+    }
+
+    bool &getInputValidationStatusIndicator() {
+        return show_input_valid_status_;
+    }
     // Add more state variables and corresponding accessor/mutator methods as needed
 
 
@@ -29,6 +41,7 @@ private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
     int menu_selector_;
     int focus_selector_;
+    bool show_saved_status_, show_parse_status_, show_input_valid_status_;
     // Add more state variables here
 };
 
