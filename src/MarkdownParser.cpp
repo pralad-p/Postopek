@@ -11,8 +11,8 @@ FileContainer::FileContainer(const std::filesystem::path &p) {
 
 void FileContainer::Parse() {
     static const std::regex header("^# (.+)");
-    static const std::regex list("^- (.+)");
-    static const std::regex dropdown("^> (.+)");
+    static const std::regex task_name("^- \\[[x ]\\](.+)");
+    static const std::regex task_comment("^- (.+)");
     static const std::regex empty_line("^\\s*$");
 
     std::ifstream file(file_path_);
@@ -23,6 +23,8 @@ void FileContainer::Parse() {
     std::smatch matches;
     std::string generic_comment;
     bool header_logged = false;
+    bool taskHasComments = false;
+    bool firstTask = true;
     while (std::getline(file, line)) {
         if (std::regex_match(line, empty_line)) {
             continue;
@@ -32,20 +34,34 @@ void FileContainer::Parse() {
             header_logged = true;
             continue;
         }
-        if (std::regex_search(line, matches, list)) {
+        if (std::regex_search(line, matches, task_name)) {
             tasks_.push_back(matches[1]);
-            comments_.push_back(generic_comment.empty() ? "" : generic_comment);
-            generic_comment.clear();
+            if (!firstTask) {
+                if (taskHasComments) {
+                    comments_.push_back(generic_comment);
+                    generic_comment.clear();
+                } else {
+                    comments_.emplace_back("");
+                }
+            }
+            firstTask = false;
+            taskHasComments = false;
             continue;
         }
-        if (std::regex_search(line, matches, dropdown)) {
+        if (std::regex_search(line, matches, task_comment)) {
             if (!generic_comment.empty()) {
                 generic_comment += "\n";
             }
             generic_comment += " => ";
             generic_comment += matches[1];
             generic_comment += "  ";
+            taskHasComments = true;
         }
+    }
+    if (!generic_comment.empty()) { // for the last comment
+        comments_.push_back(generic_comment);
+    } else {
+        comments_.emplace_back("");
     }
 }
 

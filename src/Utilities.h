@@ -5,6 +5,7 @@
 #ifndef POSTOPEK_UTILITIES_H
 #define POSTOPEK_UTILITIES_H
 
+#include <locale>
 #include <chrono>
 #include <ctime>
 #include <codecvt>
@@ -13,6 +14,8 @@
 #include "ValidationCheck.h"
 
 std::string getCurrentTime();
+
+std::string convertToStandardString(const std::wstring &);
 
 std::wstring convertToWideString(const std::string &);
 

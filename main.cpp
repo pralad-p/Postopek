@@ -100,6 +100,8 @@ int main() {
     incorrect_input_shortcut_indicator = false;
     auto &incorrect_input_indicator = stateTracker.getInputValidationStatusIndicator();
     incorrect_input_shortcut_indicator = false;
+    auto &file_modified_flag = stateTracker.getFileModifiedFlag();
+    file_modified_flag = false;
     // UI Divisions
 
     // Menu related
@@ -264,7 +266,6 @@ int main() {
         bool wildCardSet = false;
         if (std::regex_search(*content, matches, wildCardPattern)) {
             wildCardSet = true;
-        } else {
             incorrect_input_shortcut_indicator = true;
             // wait for 2 seconds
             std::thread([&incorrect_input_shortcut_indicator]() {
@@ -290,7 +291,7 @@ int main() {
     std::wstring hover_text;
     auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
             &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses,
-            &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator] {
+            &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator, &file_modified_flag] {
         std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
         std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
         std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
@@ -392,6 +393,7 @@ int main() {
                 }
             }
             content->clear();
+            file_modified_flag = true;
         } else if (std::regex_search(*content, matches, newCommentPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
@@ -403,6 +405,7 @@ int main() {
             current_comment += L" => [" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
             current_comment += convertToWideString(newContent);
             content->clear();
+            file_modified_flag = true;
         } else if (std::regex_search(*content, matches, changeTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
@@ -410,6 +413,7 @@ int main() {
             auto &current_task = *checkbox_labels[taskNumber - 1];
             current_task = updatedTask;
             content->clear();
+            file_modified_flag = true;
         } else {
             incorrect_input_indicator = true;
             // wait for 2 seconds
@@ -502,15 +506,53 @@ int main() {
                                                      });
 
     completeLayout |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+        static const std::regex startingCommentPrefix("^\\s*=>");
         if (event == ftxui::Event::Tab) {
             bool inputBarFocused = completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->Focused();
             if (!inputBarFocused) {
                 completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->TakeFocus();
                 return true;
             }
-        } else if (event == ftxui::Event::Special({0x13})) {
-            // Perform the action associated with Ctrl+S
-            show_saved_status = true;
+        } else if (event == ftxui::Event::Special({0x13})) { // Special ASCII code for Ctrl+S
+            if (file_modified_flag) {
+                std::string completeFileContent;
+                auto filePathToSave = mdPaths.at(menu_selector);
+                std::ofstream fileOutputStream(filePathToSave, std::ios::out);
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to open the file for writing: " << filePathToSave << std::endl;
+                    return false;
+                }
+                completeFileContent += "# " + *task_header + "\n\n";
+                for (size_t i = 0; i < checkbox_labels.size(); i++) {
+                    completeFileContent += checkbox_statuses.at(i) ? "- [ ] " : "- [x] ";
+                    completeFileContent += *checkbox_labels.at(i);
+                    completeFileContent += "\n";
+                    if (!(*checkbox_comments.at(i)).empty()) {
+                        auto comment = convertToStandardString(*checkbox_comments.at(i));
+                        auto replacedComment = std::regex_replace(comment, startingCommentPrefix, "-");
+                        completeFileContent += replacedComment;
+                        completeFileContent += "\n";
+                    }
+                }
+                if (!completeFileContent.empty() && completeFileContent.back() == '\n') {
+                    completeFileContent.pop_back();
+                }
+                fileOutputStream << completeFileContent;
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to write to the file: " << filePathToSave << std::endl;
+                    return false;
+                }
+                fileOutputStream.close();
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to close the file: " << filePathToSave << std::endl;
+                    return false;
+                }
+                // Perform the action associated with Ctrl+S
+                show_saved_status = true;
+            }
             // wait for 2 seconds
             std::thread([&show_saved_status]() {
                 std::this_thread::sleep_for(std::chrono::seconds(2));
