@@ -32,6 +32,10 @@ public:
     bool &getInputValidationStatusIndicator() {
         return show_input_valid_status_;
     }
+
+    bool &getFileModifiedFlag() {
+        return show_modified_flag_;
+    }
     // Add more state variables and corresponding accessor/mutator methods as needed
 
 
@@ -41,7 +45,7 @@ private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
     int menu_selector_;
     int focus_selector_;
-    bool show_saved_status_, show_parse_status_, show_input_valid_status_;
+    bool show_saved_status_, show_parse_status_, show_input_valid_status_, show_modified_flag_;
     // Add more state variables here
 };
 
