@@ -266,7 +266,6 @@ int main() {
         bool wildCardSet = false;
         if (std::regex_search(*content, matches, wildCardPattern)) {
             wildCardSet = true;
-        } else {
             incorrect_input_shortcut_indicator = true;
             // wait for 2 seconds
             std::thread([&incorrect_input_shortcut_indicator]() {
@@ -507,6 +506,7 @@ int main() {
                                                      });
 
     completeLayout |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+        static const std::regex startingCommentPrefix("^\\s*=>");
         if (event == ftxui::Event::Tab) {
             bool inputBarFocused = completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->Focused();
             if (!inputBarFocused) {
@@ -514,9 +514,45 @@ int main() {
                 return true;
             }
         } else if (event == ftxui::Event::Special({0x13})) { // Special ASCII code for Ctrl+S
-
-            // Perform the action associated with Ctrl+S
-            show_saved_status = true;
+            if (file_modified_flag) {
+                std::string completeFileContent;
+                auto filePathToSave = mdPaths.at(menu_selector);
+                std::ofstream fileOutputStream(filePathToSave, std::ios::out);
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to open the file for writing: " << filePathToSave << std::endl;
+                    return false;
+                }
+                completeFileContent += "# " + *task_header + "\n\n";
+                for (size_t i = 0; i < checkbox_labels.size(); i++) {
+                    completeFileContent += checkbox_statuses.at(i) ? "- [ ] " : "- [x] ";
+                    completeFileContent += *checkbox_labels.at(i);
+                    completeFileContent += "\n";
+                    if (!(*checkbox_comments.at(i)).empty()) {
+                        auto comment = convertToStandardString(*checkbox_comments.at(i));
+                        auto replacedComment = std::regex_replace(comment, startingCommentPrefix, "-");
+                        completeFileContent += replacedComment;
+                        completeFileContent += "\n";
+                    }
+                }
+                if (!completeFileContent.empty() && completeFileContent.back() == '\n') {
+                    completeFileContent.pop_back();
+                }
+                fileOutputStream << completeFileContent;
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to write to the file: " << filePathToSave << std::endl;
+                    return false;
+                }
+                fileOutputStream.close();
+                if (!fileOutputStream) {
+                    // Handle the error.
+                    std::cerr << "Failed to close the file: " << filePathToSave << std::endl;
+                    return false;
+                }
+                // Perform the action associated with Ctrl+S
+                show_saved_status = true;
+            }
             // wait for 2 seconds
             std::thread([&show_saved_status]() {
                 std::this_thread::sleep_for(std::chrono::seconds(2));

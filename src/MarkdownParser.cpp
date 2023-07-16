@@ -23,6 +23,8 @@ void FileContainer::Parse() {
     std::smatch matches;
     std::string generic_comment;
     bool header_logged = false;
+    bool taskHasComments = false;
+    bool firstTask = true;
     while (std::getline(file, line)) {
         if (std::regex_match(line, empty_line)) {
             continue;
@@ -34,8 +36,16 @@ void FileContainer::Parse() {
         }
         if (std::regex_search(line, matches, task_name)) {
             tasks_.push_back(matches[1]);
-            comments_.push_back(generic_comment.empty() ? "" : generic_comment);
-            generic_comment.clear();
+            if (!firstTask) {
+                if (taskHasComments) {
+                    comments_.push_back(generic_comment);
+                    generic_comment.clear();
+                } else {
+                    comments_.emplace_back("");
+                }
+            }
+            firstTask = false;
+            taskHasComments = false;
             continue;
         }
         if (std::regex_search(line, matches, task_comment)) {
@@ -45,7 +55,13 @@ void FileContainer::Parse() {
             generic_comment += " => ";
             generic_comment += matches[1];
             generic_comment += "  ";
+            taskHasComments = true;
         }
+    }
+    if (!generic_comment.empty()) { // for the last comment
+        comments_.push_back(generic_comment);
+    } else {
+        comments_.emplace_back("");
     }
 }
 
