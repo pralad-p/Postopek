@@ -508,7 +508,8 @@ int main() {
                 completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->TakeFocus();
                 return true;
             }
-        } else if (event == ftxui::Event::Special({0x13})) {
+        } else if (event == ftxui::Event::Special({0x13})) { // Special ASCII code for Ctrl+S
+
             // Perform the action associated with Ctrl+S
             show_saved_status = true;
             // wait for 2 seconds

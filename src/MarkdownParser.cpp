@@ -11,8 +11,8 @@ FileContainer::FileContainer(const std::filesystem::path &p) {
 
 void FileContainer::Parse() {
     static const std::regex header("^# (.+)");
-    static const std::regex list("^- (.+)");
-    static const std::regex dropdown("^> (.+)");
+    static const std::regex task_name("^- \\[[x ]\\](.+)");
+    static const std::regex task_comment("^- (.+)");
     static const std::regex empty_line("^\\s*$");
 
     std::ifstream file(file_path_);
@@ -32,13 +32,13 @@ void FileContainer::Parse() {
             header_logged = true;
             continue;
         }
-        if (std::regex_search(line, matches, list)) {
+        if (std::regex_search(line, matches, task_name)) {
             tasks_.push_back(matches[1]);
             comments_.push_back(generic_comment.empty() ? "" : generic_comment);
             generic_comment.clear();
             continue;
         }
-        if (std::regex_search(line, matches, dropdown)) {
+        if (std::regex_search(line, matches, task_comment)) {
             if (!generic_comment.empty()) {
                 generic_comment += "\n";
             }
