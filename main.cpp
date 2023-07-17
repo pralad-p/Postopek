@@ -331,11 +331,11 @@ int main() {
         }
         if (!wildCardSet) {
             if (std::regex_search(*content, matches, newTaskPattern)) {
-                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
+                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>: ");
             } else if (std::regex_search(*content, matches, newCommentPattern)) {
-                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
+                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>: ");
             } else if (std::regex_search(*content, matches, changeTaskPattern)) {
-                *content = std::regex_replace(*content, changeTaskPattern, "<!change-task-$1>");
+                *content = std::regex_replace(*content, changeTaskPattern, "<!change-task-$1>: ");
             }
             // Place the cursor after the size of content.
             input_option.cursor_position = static_cast<int>(content->size());
@@ -348,9 +348,9 @@ int main() {
     auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
             &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses,
             &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator, &file_modified_flag] {
-        std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
-        std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
-        std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
+        std::regex newTaskPattern("<!add-new-task-(\\d+)>:\\s*(.*)");
+        std::regex newCommentPattern("<!add-new-comment-(\\d+)>:\\s*(.*)");
+        std::regex changeTaskPattern("<!change-task-(\\d+)>:\\s*(.*)");
         std::smatch matches;
         if (std::regex_search(*content, matches, newTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
@@ -453,7 +453,7 @@ int main() {
         } else if (std::regex_search(*content, matches, newCommentPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
-            auto newContent = matches.str(2);
+            auto newContent = " " + matches.str(2);
             auto &current_comment = *checkbox_comments[taskNumber - 1];
             if (!current_comment.empty()) {
                 current_comment += L"\n";
@@ -465,7 +465,7 @@ int main() {
         } else if (std::regex_search(*content, matches, changeTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
-            auto updatedTask = matches.str(2);
+            auto updatedTask = " " + matches.str(2);
             auto &current_task = *checkbox_labels[taskNumber - 1];
             current_task = updatedTask;
             content->clear();
