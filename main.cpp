@@ -139,9 +139,12 @@ int main() {
     StateTracker &stateTracker = StateTracker::getInstance();
 
     // Read from config file
-    auto mdPaths = checkTempFileAndGetFiles();
-    auto markdowns = getMarkdownVector(mdPaths);
-    auto markDownContainers = loadMarkdownContainers(markdowns);
+    std::vector<std::filesystem::path> mdPaths;
+    std::vector<markdownFile_> markdowns;
+    std::vector<FileContainer> markDownContainers;
+
+    mdPaths = checkTempFileAndGetFiles();
+    markdowns = getMarkdownVector(mdPaths);
 
     // Variables
     auto &focus_selector = stateTracker.getFocusSelector();
@@ -158,6 +161,8 @@ int main() {
     file_modified_flag = false;
     auto &file_save_check_flag = stateTracker.getConfirmQuitStatusIndicator();
     file_save_check_flag = false;
+    auto &move_to_menu_save_flag = stateTracker.getMenuSaveFlagIndicator();
+    move_to_menu_save_flag = false;
     // UI Divisions
 
     // Menu related
@@ -222,6 +227,7 @@ int main() {
             focus_selector = 2;
         } else {
             taskComponentContainer->DetachAllChildren();
+            markDownContainers = loadMarkdownContainers(markdowns);
             auto focused_file_container = markDownContainers.at(menu_selector);
             auto currentContainerSize = focused_file_container.getTasks().size();
             checkbox_labels.clear();
@@ -524,11 +530,14 @@ int main() {
                                                        }) | ftxui::border | ftxui::center;
 
     auto statusBar = ftxui::Renderer(
-            [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator, &file_save_check_flag] {
+            [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator, &file_save_check_flag, &move_to_menu_save_flag] {
                 if (show_saved_status) {
                     return ftxui::text("Saved successfully!") | color(ftxui::Color::Green) | ftxui::bold;
                 } else if (file_save_check_flag) {
                     return ftxui::text("Unsaved changes! Save changes? (Y)es (N)o (A)bort") | color(ftxui::Color::Red) |
+                           ftxui::bold;
+                } else if (move_to_menu_save_flag) {
+                    return ftxui::text("Unsaved changes! Save with Ctrl+S first!") | color(ftxui::Color::Red) |
                            ftxui::bold;
                 } else if (incorrect_input_shortcut_indicator) {
                     return ftxui::text("Parse Error: Trouble parsing shortcut") | color(ftxui::Color::Red) |
@@ -572,6 +581,18 @@ int main() {
                 completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->TakeFocus();
                 return true;
             }
+        } else if (event == ftxui::Event::Special({0x1b, '[', '1', ';', '5', 'D'})) { // Special ASCII code for Ctrl+<-
+            if (file_modified_flag) {
+                move_to_menu_save_flag = true;
+                // wait for 2 seconds
+                std::thread([&move_to_menu_save_flag]() {
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    move_to_menu_save_flag = false;
+                }).detach();
+                return true;
+            }
+            focus_selector = 0;
+            return true;
         } else if (event == ftxui::Event::Special({0x13})) { // Special ASCII code for Ctrl+S
             if (file_modified_flag) {
                 ApplicationMetaData::instance().filePath = mdPaths.at(menu_selector);
@@ -579,15 +600,16 @@ int main() {
                 ApplicationMetaData::instance().checkbox_statuses = checkbox_statuses;
                 ApplicationMetaData::instance().checkbox_labels = checkbox_labels;
                 ApplicationMetaData::instance().checkbox_comments = checkbox_comments;
-                HandleSavingEvent(ApplicationMetaData::instance());
                 // Perform the action associated with Ctrl+S
+                HandleSavingEvent(ApplicationMetaData::instance());
+                file_modified_flag = false;
                 show_saved_status = true;
+                // wait for 2 seconds
+                std::thread([&show_saved_status]() {
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    show_saved_status = false;
+                }).detach();
             }
-            // wait for 2 seconds
-            std::thread([&show_saved_status]() {
-                std::this_thread::sleep_for(std::chrono::seconds(2));
-                show_saved_status = false;
-            }).detach();
             return true;
         }
         return false;
@@ -630,8 +652,9 @@ int main() {
             ApplicationMetaData::instance().checkbox_statuses = checkbox_statuses;
             ApplicationMetaData::instance().checkbox_labels = checkbox_labels;
             ApplicationMetaData::instance().checkbox_comments = checkbox_comments;
-            HandleSavingEvent(ApplicationMetaData::instance());
             // Perform the action associated with Ctrl+S
+            HandleSavingEvent(ApplicationMetaData::instance());
+            file_modified_flag = false;
             show_saved_status = true;
             // wait for 2 seconds
             std::thread([&show_saved_status]() {

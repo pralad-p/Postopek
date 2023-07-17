@@ -40,6 +40,10 @@ public:
     bool &getFileModifiedFlag() {
         return show_modified_flag_;
     }
+
+    bool &getMenuSaveFlagIndicator() {
+        return show_return_menu_flag_;
+    }
     // Add more state variables and corresponding accessor/mutator methods as needed
 
 
@@ -50,6 +54,7 @@ private:
     int menu_selector_;
     int focus_selector_;
     bool show_saved_status_, show_parse_status_, show_input_valid_status_, show_modified_flag_, show_confirm_quit_flag_;
+    bool show_return_menu_flag_;
     // Add more state variables here
 };
 
