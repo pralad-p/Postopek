@@ -17,7 +17,6 @@
  * Own module libraries
  */
 #include "Utilities.h"
-#include "Application.h"
 #include "ValidationCheck.h"
 #include "StateTracker.h"
 #include "WindowsUtilities.h"
@@ -26,6 +25,24 @@
 /*
  * Personal data structures
  */
+
+struct ApplicationMetaData {
+    std::filesystem::path filePath;
+    std::shared_ptr<std::string> task_header_ref;
+    std::vector<std::shared_ptr<bool>> checkbox_statuses;
+    std::vector<std::shared_ptr<std::string>> checkbox_labels;
+    std::vector<std::shared_ptr<std::wstring>> checkbox_comments;
+
+    // Singleton instance
+    static ApplicationMetaData &instance() {
+        static ApplicationMetaData instance;
+        return instance;
+    }
+
+private:
+    // Private constructor for singleton
+    ApplicationMetaData() {}
+};
 
 typedef struct markdownFile_ {
     std::filesystem::path filePath;
@@ -36,6 +53,43 @@ typedef struct markdownFile_ {
 /*
  * Personal methods
  */
+void HandleSavingEvent(const ApplicationMetaData &data) {
+    static const std::regex startingCommentPrefix("^\\s*=>");
+    std::string completeFileContent;
+    auto filePathToSave = data.filePath;
+    std::ofstream fileOutputStream(filePathToSave, std::ios::out);
+    if (!fileOutputStream) {
+        // Handle the error.
+        std::cerr << "Failed to open the file for writing: " << filePathToSave << std::endl;
+    }
+    completeFileContent += "# " + *(data.task_header_ref) + "\n\n";
+    for (size_t i = 0; i < data.checkbox_labels.size(); i++) {
+        completeFileContent += data.checkbox_statuses.at(i) ? "- [ ] " : "- [x] ";
+        completeFileContent += *data.checkbox_labels.at(i);
+        completeFileContent += "\n";
+        if (!(*data.checkbox_comments.at(i)).empty()) {
+            auto comment = convertToStandardString(*data.checkbox_comments.at(i));
+            auto replacedComment = std::regex_replace(comment, startingCommentPrefix, "-");
+            completeFileContent += replacedComment;
+            completeFileContent += "\n";
+        }
+    }
+    if (!completeFileContent.empty() && completeFileContent.back() == '\n') {
+        completeFileContent.pop_back();
+    }
+    fileOutputStream << completeFileContent;
+    if (!fileOutputStream) {
+        // Handle the error.
+        std::cerr << "Failed to write to the file: " << filePathToSave << std::endl;
+    }
+    fileOutputStream.close();
+    if (!fileOutputStream) {
+        // Handle the error.
+        std::cerr << "Failed to close the file: " << filePathToSave << std::endl;
+    }
+}
+
+
 std::vector<FileContainer> loadMarkdownContainers(std::vector<markdownFile> &markdowns) {
     std::vector<FileContainer> containers;
     size_t parseableMarkdowns = std::count_if(markdowns.begin(), markdowns.end(), [](const markdownFile &m) {
@@ -102,6 +156,8 @@ int main() {
     incorrect_input_shortcut_indicator = false;
     auto &file_modified_flag = stateTracker.getFileModifiedFlag();
     file_modified_flag = false;
+    auto &file_save_check_flag = stateTracker.getConfirmQuitStatusIndicator();
+    file_save_check_flag = false;
     // UI Divisions
 
     // Menu related
@@ -275,11 +331,11 @@ int main() {
         }
         if (!wildCardSet) {
             if (std::regex_search(*content, matches, newTaskPattern)) {
-                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>");
+                *content = std::regex_replace(*content, newTaskPattern, "<!add-new-task-$1>: ");
             } else if (std::regex_search(*content, matches, newCommentPattern)) {
-                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>");
+                *content = std::regex_replace(*content, newCommentPattern, "<!add-new-comment-$1>: ");
             } else if (std::regex_search(*content, matches, changeTaskPattern)) {
-                *content = std::regex_replace(*content, changeTaskPattern, "<!change-task-$1>");
+                *content = std::regex_replace(*content, changeTaskPattern, "<!change-task-$1>: ");
             }
             // Place the cursor after the size of content.
             input_option.cursor_position = static_cast<int>(content->size());
@@ -292,9 +348,9 @@ int main() {
     auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
             &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses,
             &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator, &file_modified_flag] {
-        std::regex newTaskPattern("<!add-new-task-(\\d+)>(.*)");
-        std::regex newCommentPattern("<!add-new-comment-(\\d+)>(.*)");
-        std::regex changeTaskPattern("<!change-task-(\\d+)>(.*)");
+        std::regex newTaskPattern("<!add-new-task-(\\d+)>:\\s*(.*)");
+        std::regex newCommentPattern("<!add-new-comment-(\\d+)>:\\s*(.*)");
+        std::regex changeTaskPattern("<!change-task-(\\d+)>:\\s*(.*)");
         std::smatch matches;
         if (std::regex_search(*content, matches, newTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
@@ -397,7 +453,7 @@ int main() {
         } else if (std::regex_search(*content, matches, newCommentPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
-            auto newContent = matches.str(2);
+            auto newContent = " " + matches.str(2);
             auto &current_comment = *checkbox_comments[taskNumber - 1];
             if (!current_comment.empty()) {
                 current_comment += L"\n";
@@ -409,7 +465,7 @@ int main() {
         } else if (std::regex_search(*content, matches, changeTaskPattern) && matches.size() > 1) {
             if (!isGoodTaskNumber(matches, *iteration_range_values.front(), *iteration_range_values.back())) { return; }
             int taskNumber = getTaskNumber(matches);
-            auto updatedTask = matches.str(2);
+            auto updatedTask = " " + matches.str(2);
             auto &current_task = *checkbox_labels[taskNumber - 1];
             current_task = updatedTask;
             content->clear();
@@ -468,9 +524,12 @@ int main() {
                                                        }) | ftxui::border | ftxui::center;
 
     auto statusBar = ftxui::Renderer(
-            [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator] {
+            [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator, &file_save_check_flag] {
                 if (show_saved_status) {
                     return ftxui::text("Saved successfully!") | color(ftxui::Color::Green) | ftxui::bold;
+                } else if (file_save_check_flag) {
+                    return ftxui::text("Unsaved changes! Save changes? (Y)es (N)o (A)bort") | color(ftxui::Color::Red) |
+                           ftxui::bold;
                 } else if (incorrect_input_shortcut_indicator) {
                     return ftxui::text("Parse Error: Trouble parsing shortcut") | color(ftxui::Color::Red) |
                            ftxui::bold;
@@ -505,8 +564,8 @@ int main() {
                                                              statusBar
                                                      });
 
+
     completeLayout |= ftxui::CatchEvent([&](const ftxui::Event &event) {
-        static const std::regex startingCommentPrefix("^\\s*=>");
         if (event == ftxui::Event::Tab) {
             bool inputBarFocused = completeLayout->ChildAt(0)->ChildAt(1)->ChildAt(0)->Focused();
             if (!inputBarFocused) {
@@ -515,41 +574,12 @@ int main() {
             }
         } else if (event == ftxui::Event::Special({0x13})) { // Special ASCII code for Ctrl+S
             if (file_modified_flag) {
-                std::string completeFileContent;
-                auto filePathToSave = mdPaths.at(menu_selector);
-                std::ofstream fileOutputStream(filePathToSave, std::ios::out);
-                if (!fileOutputStream) {
-                    // Handle the error.
-                    std::cerr << "Failed to open the file for writing: " << filePathToSave << std::endl;
-                    return false;
-                }
-                completeFileContent += "# " + *task_header + "\n\n";
-                for (size_t i = 0; i < checkbox_labels.size(); i++) {
-                    completeFileContent += checkbox_statuses.at(i) ? "- [ ] " : "- [x] ";
-                    completeFileContent += *checkbox_labels.at(i);
-                    completeFileContent += "\n";
-                    if (!(*checkbox_comments.at(i)).empty()) {
-                        auto comment = convertToStandardString(*checkbox_comments.at(i));
-                        auto replacedComment = std::regex_replace(comment, startingCommentPrefix, "-");
-                        completeFileContent += replacedComment;
-                        completeFileContent += "\n";
-                    }
-                }
-                if (!completeFileContent.empty() && completeFileContent.back() == '\n') {
-                    completeFileContent.pop_back();
-                }
-                fileOutputStream << completeFileContent;
-                if (!fileOutputStream) {
-                    // Handle the error.
-                    std::cerr << "Failed to write to the file: " << filePathToSave << std::endl;
-                    return false;
-                }
-                fileOutputStream.close();
-                if (!fileOutputStream) {
-                    // Handle the error.
-                    std::cerr << "Failed to close the file: " << filePathToSave << std::endl;
-                    return false;
-                }
+                ApplicationMetaData::instance().filePath = mdPaths.at(menu_selector);
+                ApplicationMetaData::instance().task_header_ref = task_header;
+                ApplicationMetaData::instance().checkbox_statuses = checkbox_statuses;
+                ApplicationMetaData::instance().checkbox_labels = checkbox_labels;
+                ApplicationMetaData::instance().checkbox_comments = checkbox_comments;
+                HandleSavingEvent(ApplicationMetaData::instance());
                 // Perform the action associated with Ctrl+S
                 show_saved_status = true;
             }
@@ -578,7 +608,47 @@ int main() {
         ClearDOSPromptScreen();
     };
 
-    auto main_component = ftxui::Make<Application>(applicationContainer, quitMethod);
+    static int qCounter = 0;
+    static bool inSaveCheckState = false;
+
+    applicationContainer |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+        if (event == ftxui::Event::Character('q')) {
+            ++qCounter; // increment the global variable
+            if (qCounter == 3) {  // Only exit when 'q' is pressed 3 times
+                if (file_modified_flag) {
+                    file_save_check_flag = true;
+                    inSaveCheckState = true;
+                    return true;
+                } else {
+                    quitMethod();
+                }
+            }
+        } else if (inSaveCheckState && event == ftxui::Event::Character('y')) {
+            file_save_check_flag = false;
+            ApplicationMetaData::instance().filePath = mdPaths.at(menu_selector);
+            ApplicationMetaData::instance().task_header_ref = task_header;
+            ApplicationMetaData::instance().checkbox_statuses = checkbox_statuses;
+            ApplicationMetaData::instance().checkbox_labels = checkbox_labels;
+            ApplicationMetaData::instance().checkbox_comments = checkbox_comments;
+            HandleSavingEvent(ApplicationMetaData::instance());
+            // Perform the action associated with Ctrl+S
+            show_saved_status = true;
+            // wait for 2 seconds
+            std::thread([&show_saved_status]() {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                show_saved_status = false;
+            }).detach();
+            inSaveCheckState = false;
+            quitMethod();
+        } else if (inSaveCheckState && event == ftxui::Event::Character('n')) {
+            quitMethod();
+        } else if (inSaveCheckState && event == ftxui::Event::Character('a')) {
+            file_save_check_flag = false;
+            inSaveCheckState = false;
+            qCounter = 0;
+        }
+        return false;
+    });
 
     // Run the application in a loop.
     std::thread([&] {
@@ -590,7 +660,7 @@ int main() {
 
     // Start the event loop.
     screen.Clear();
-    screen.Loop(main_component);
+    screen.Loop(applicationContainer);
 
     return 0;
 }

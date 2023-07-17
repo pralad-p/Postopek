@@ -33,6 +33,10 @@ public:
         return show_input_valid_status_;
     }
 
+    bool &getConfirmQuitStatusIndicator() {
+        return show_confirm_quit_flag_;
+    }
+
     bool &getFileModifiedFlag() {
         return show_modified_flag_;
     }
@@ -45,7 +49,7 @@ private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
     int menu_selector_;
     int focus_selector_;
-    bool show_saved_status_, show_parse_status_, show_input_valid_status_, show_modified_flag_;
+    bool show_saved_status_, show_parse_status_, show_input_valid_status_, show_modified_flag_, show_confirm_quit_flag_;
     // Add more state variables here
 };
 

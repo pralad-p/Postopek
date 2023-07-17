@@ -28,14 +28,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(SOURCES
         main.cpp
         src/Utilities.cpp
-        src/Application.cpp
         src/ValidationCheck.cpp
         src/MarkdownParser.cpp
         )
 
 set(HEADERS
         src/Utilities.h
-        src/Application.h
         src/ValidationCheck.h
         src/WindowsUtilities.h
         src/StateTracker.h
