@@ -518,16 +518,41 @@ int main() {
     auto messageButtonCallback = [&focus_selector]() {
         focus_selector = 0;
     };
-    auto messageContainer = ftxui::Container::Vertical({
-                                                               ftxui::Renderer([] {
-                                                                   return ftxui::text(
-                                                                           "Can't select file: Not compatible with Postopek!") |
-                                                                          ftxui::bold | ftxui::center;
-                                                               }),
-                                                               ftxui::Renderer([] { return ftxui::separatorHeavy(); }),
-                                                               ftxui::Button(&messageButtonString,
-                                                                             messageButtonCallback)
-                                                       }) | ftxui::border | ftxui::center;
+    auto errorMessageContainer = ftxui::Container::Vertical({
+                                                                    ftxui::Renderer([] {
+                                                                        return ftxui::text(
+                                                                                "Can't select file: Not compatible with Postopek!") |
+                                                                               ftxui::bold | ftxui::center;
+                                                                    }),
+                                                                    ftxui::Renderer(
+                                                                            [] { return ftxui::separatorHeavy(); }),
+                                                                    ftxui::Button(&messageButtonString,
+                                                                                  messageButtonCallback)
+                                                            }) | ftxui::border | ftxui::center;
+
+    auto helpDialogContainer = ftxui::Container::Vertical({
+                                                                  ftxui::Renderer([] {
+                                                                      return ftxui::text(
+                                                                              "Help Section (Esc to leave)") |
+                                                                             ftxui::bold | ftxui::center;
+                                                                  }),
+                                                                  ftxui::Renderer(
+                                                                          [] { return ftxui::separatorHeavy(); }),
+                                                                  ftxui::Renderer([] {
+                                                                      return ftxui::vbox(
+                                                                              ftxui::hbox(
+                                                                                      ftxui::text("Ctrl+S"),
+                                                                                      ftxui::text("           "),
+                                                                                      ftxui::text("Save file")
+                                                                              ),
+                                                                              ftxui::hbox(
+                                                                                      ftxui::text("qqq"),
+                                                                                      ftxui::text("           "),
+                                                                                      ftxui::text("Quit program")
+                                                                              ));
+                                                                  })
+                                                          }) | ftxui::border | ftxui::center;
+
 
     auto statusBar = ftxui::Renderer(
             [&show_saved_status, &incorrect_input_shortcut_indicator, &incorrect_input_indicator, &file_save_check_flag, &move_to_menu_save_flag] {
@@ -546,8 +571,8 @@ int main() {
                     return ftxui::text("Parse Error: Trouble parsing input command") | color(ftxui::Color::Red) |
                            ftxui::bold;
                 } else {
-                    return ftxui::hbox(ftxui::text("Ctrl+S ▶️ Save   "),
-                                       ftxui::text("qqq ▶️ Quit   "),
+                    return ftxui::hbox(ftxui::text(
+                                               "Ctrl+H ▶️ Help   "),
                                        ftxui::text(
                                                "ant # ▶️ Add new task after #   "),
                                        ftxui::text(
@@ -611,16 +636,21 @@ int main() {
                 }).detach();
             }
             return true;
+        } else if (!event.character().empty() && event.character()[0] == '\x7F') { // ASCII value for Ctrl+H
+            // Handle Control+H event...
+            // Here you can render your help dialog.
+            focus_selector = 3;
+            return true;
         }
         return false;
     });
-
 
     // Replace the main component with the engine wrapper
     auto applicationContainer = ftxui::Container::Tab({
                                                               fileSelectorContainer,
                                                               completeLayout,
-                                                              messageContainer
+                                                              errorMessageContainer,
+                                                              helpDialogContainer
                                                       }, &focus_selector);
 
     bool runEngine = true;
@@ -634,6 +664,10 @@ int main() {
     static bool inSaveCheckState = false;
 
     applicationContainer |= ftxui::CatchEvent([&](const ftxui::Event &event) {
+        if (focus_selector == 3 && event == ftxui::Event::Escape) {
+            focus_selector = 1;
+            return true;
+        }
         if (event == ftxui::Event::Character('q')) {
             ++qCounter; // increment the global variable
             if (qCounter == 3) {  // Only exit when 'q' is pressed 3 times
@@ -687,3 +721,5 @@ int main() {
 
     return 0;
 }
+
+// Copyright Pralad Prasad
