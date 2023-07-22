@@ -546,9 +546,14 @@ int main() {
                                                                                       ftxui::text("Save file")
                                                                               ),
                                                                               ftxui::hbox(
+                                                                                      ftxui::text("Alt+V"),
+                                                                                      ftxui::text("           "),
+                                                                                      ftxui::text("Focus on tasks")
+                                                                              ),
+                                                                              ftxui::hbox(
                                                                                       ftxui::text("qqq"),
                                                                                       ftxui::text("           "),
-                                                                                      ftxui::text("Quit program")
+                                                                                      ftxui::text("Quit")
                                                                               ));
                                                                   })
                                                           }) | ftxui::border | ftxui::center;
@@ -636,13 +641,13 @@ int main() {
                 }).detach();
             }
             return true;
-        } else if (!event.character().empty() && event.character() == "\x1Bv") { // ASCII value for Alt+V
-            bool taskContainerFocused = completeLayout->ChildAt(0)->ChildAt(0)->ChildAt(1)->Focused();
+        } else if (event == ftxui::Event::Special("\x1Bv")) { // ASCII value for Alt+V
+            bool taskContainerFocused = completeLayout->ChildAt(0)->ChildAt(0)->ChildAt(0)->ChildAt(1)->Focused();
             if (!taskContainerFocused) {
-                completeLayout->ChildAt(0)->ChildAt(0)->ChildAt(1)->TakeFocus();
+                completeLayout->ChildAt(0)->ChildAt(0)->ChildAt(0)->ChildAt(1)->TakeFocus();
                 return true;
             }
-        } else if (!event.character().empty() && event.character() == "\x1Bh") { // ASCII value for Alt+H
+        } else if (event == ftxui::Event::Special("\x1Bh")) { // ASCII value for Alt+H
             // Render the help dialog.
             focus_selector = 3;
             return true;
