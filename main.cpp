@@ -168,11 +168,16 @@ int main() {
     // Menu related
     std::vector<std::string> menuEntries;
     std::vector<bool> statusFlags;
+    std::vector<std::shared_ptr<bool>> shouldStartFreshStatusFlags;
+    ftxui::Components startFreshCheckboxes;
     auto menuContainer = ftxui::Container::Vertical({});
     auto statusContainer = ftxui::Container::Vertical({});
+    auto startFreshContainer = ftxui::Container::Vertical({});
     for (const auto &mFile: markdowns) {
         menuEntries.push_back(mFile.fileName);
         statusFlags.push_back(mFile.isParseable);
+        // by default, start fresh
+        shouldStartFreshStatusFlags.push_back(std::make_shared<bool>(true));
         auto status = ftxui::Renderer([mFile] {
             if (mFile.isParseable) {
                 return ftxui::text("🟢");
@@ -183,6 +188,13 @@ int main() {
         statusContainer->Add(status);
     }
 
+    for (auto &statusFlag: shouldStartFreshStatusFlags) {
+        startFreshCheckboxes.push_back(ftxui::Checkbox("", statusFlag.get()));
+    }
+
+    for (auto &cb: startFreshCheckboxes) {
+        startFreshContainer->Add(cb);
+    }
 
     // Time Renderer
     auto timeRenderer = ftxui::Renderer([&] {
@@ -489,10 +501,20 @@ int main() {
 
 //    auto filler_component = ftxui::Renderer([] { return ftxui::filler(); });
     auto fileSelectorContainer = ftxui::Container::Vertical({
-                                                                    ftxui::Renderer([] {
-                                                                        return ftxui::text("Select process") |
-                                                                               ftxui::bold | ftxui::center;
-                                                                    }),
+                                                                    ftxui::Renderer(
+                                                                            [] {
+                                                                                return ftxui::hbox(
+                                                                                        ftxui::text("File"),
+                                                                                        ftxui::text("             "),
+                                                                                        ftxui::separatorDouble(),
+                                                                                        ftxui::text("  "),
+                                                                                        ftxui::text("Start Fresh?"),
+                                                                                        ftxui::text("  "),
+                                                                                        ftxui::separatorDouble(),
+                                                                                        ftxui::text("  "),
+                                                                                        ftxui::text("Valid?"),
+                                                                                        ftxui::text("  "));
+                                                                            }),
                                                                     ftxui::Renderer([] { return ftxui::separator(); }),
                                                                     ftxui::Container::Horizontal({
                                                                                                          menuContainer,
@@ -503,13 +525,23 @@ int main() {
                                                                                                                                      "    "),
                                                                                                                              ftxui::separatorDouble(),
                                                                                                                              ftxui::text(
-                                                                                                                                     "  "));
+                                                                                                                                     "     "));
+                                                                                                                 }),
+                                                                                                         startFreshContainer,
+                                                                                                         ftxui::Renderer(
+                                                                                                                 [] {
+                                                                                                                     return ftxui::hbox(
+                                                                                                                             ftxui::text(
+                                                                                                                                     "       "),
+                                                                                                                             ftxui::separatorDouble(),
+                                                                                                                             ftxui::text(
+                                                                                                                                     "    "));
                                                                                                                  }),
                                                                                                          statusContainer,
                                                                                                          ftxui::Renderer(
                                                                                                                  [] {
                                                                                                                      return ftxui::text(
-                                                                                                                             "   ");
+                                                                                                                             "     ");
                                                                                                                  })
                                                                                                  })
                                                             }) | ftxui::border | ftxui::center;
