@@ -23,11 +23,11 @@ std::wstring convertToWideString(const std::string &);
 
 std::string convertToHoursMinutes(const std::string &);
 
-inline void ltrim(std::string &);
+void ltrim(std::string &);
 
-inline void rtrim(std::string &);
+void rtrim(std::string &);
 
-inline void trimStringInPlace(std::string &);
+void trimStringInPlace(std::string &);
 
 size_t findPathIndex(const std::vector<std::filesystem::path> &, const std::filesystem::path &);
 

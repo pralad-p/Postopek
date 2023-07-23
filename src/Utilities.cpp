@@ -42,21 +42,21 @@ std::string convertToHoursMinutes(const std::string &timeString) {
 }
 
 // trimStringInPlace from start
-inline void ltrim(std::string &s) {
+void ltrim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
         return !isspace(ch);
     }));
 }
 
 // trimStringInPlace from end
-inline void rtrim(std::string &s) {
+void rtrim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
         return !isspace(ch);
     }).base(), s.end());
 }
 
 // trimStringInPlace from both ends
-inline void trimStringInPlace(std::string &s) {
+void trimStringInPlace(std::string &s) {
     ltrim(s);
     rtrim(s);
 }
