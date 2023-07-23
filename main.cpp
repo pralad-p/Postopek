@@ -87,6 +87,56 @@ void HandleSavingEvent(const ApplicationMetaData &data) {
         // Handle the error.
         std::cerr << "Failed to close the file: " << filePathToSave << std::endl;
     }
+    // Get the path to the TEMP folder
+    auto tempFolderPath = std::filesystem::temp_directory_path();
+    std::string config_file = "postopek_files.config";
+    // Construct the full path to the file in the TEMP folder
+    std::filesystem::path configFilePath = tempFolderPath / config_file;
+    // Check if the file exists and it is a regular file
+    if (!std::filesystem::is_regular_file(configFilePath)) {
+        throw std::runtime_error("Not a valid file! Run first_run.bat first!");
+    }
+    std::ifstream file(configFilePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + configFilePath.string());
+    }
+    std::string line;
+    bool seenFileBefore = false; // By default, this is a new file
+    while (std::getline(file, line)) {
+        // Find the position of the '=' character
+        size_t delimiterPos = line.find('=');
+        if (delimiterPos != std::string::npos) {
+            // Extract the key and value from the line
+            std::string lineKey = line.substr(0, delimiterPos);
+            std::string lineValue = line.substr(delimiterPos + 1);
+            trimStringInPlace(lineKey);
+            trimStringInPlace(lineValue);
+            if (lineKey == "FILE") {
+                auto visitedPath = std::filesystem::path(lineValue);
+                if (filePathToSave == visitedPath) {
+                    seenFileBefore = true;
+                    break;
+                }
+            }
+        }
+    }
+    file.close();
+    if (!seenFileBefore) {
+        // This is a new file (saved for the first time)
+        std::ofstream fileOutput(configFilePath, std::ios::app);
+        if (!fileOutput) {
+            // Handle the error.
+            std::cerr << "Failed to open the file for writing: " << configFilePath << std::endl;
+        }
+        fileOutput << "FILE=";
+        fileOutput << filePathToSave.string();
+        fileOutput << "\n";
+        if (!fileOutput) {
+            // Handle the error.
+            std::cerr << "Failed to write to the file: " << configFilePath << std::endl;
+        }
+        fileOutput.close();
+    }
 }
 
 
@@ -145,8 +195,9 @@ int main() {
     std::vector<std::filesystem::path> mdPaths;
     std::vector<markdownFile_> markdowns;
     std::vector<FileContainer> markDownContainers;
+    std::deque<bool> previouslySeenFiles;
 
-    mdPaths = checkTempFileAndGetFiles();
+    std::tie(mdPaths, previouslySeenFiles) = checkTempFileAndGetFiles();
     markdowns = getMarkdownVector(mdPaths);
 
     // Variables
@@ -176,13 +227,14 @@ int main() {
     auto menuContainer = ftxui::Container::Vertical({});
     auto statusContainer = ftxui::Container::Vertical({});
     auto startFreshContainer = ftxui::Container::Vertical({});
-    for (const auto &mFile: markdowns) {
-        menuEntries.push_back(mFile.fileName);
-        statusFlags.push_back(mFile.isParseable);
+    for (auto i = 0; i < markdowns.size(); i++) {
+        auto &mdStruct = markdowns[i];
+        menuEntries.push_back(mdStruct.fileName);
+        statusFlags.push_back(mdStruct.isParseable);
         // by default, start fresh
-        shouldStartFreshStatusFlags.push_back(std::make_shared<bool>(true));
-        auto status = ftxui::Renderer([mFile] {
-            if (mFile.isParseable) {
+        shouldStartFreshStatusFlags.push_back(std::make_shared<bool>(previouslySeenFiles[i]));
+        auto status = ftxui::Renderer([&mdStruct] {
+            if (mdStruct.isParseable) {
                 return ftxui::text("🟢");
             } else {
                 return ftxui::text("⛔");
