@@ -12,6 +12,7 @@ FileContainer::FileContainer(const std::filesystem::path &p) {
 void FileContainer::Parse() {
     static const std::regex header("^# (.+)");
     static const std::regex task_name("^- \\[[x ]\\](.+)");
+    static const std::regex ticked_task("^- \\[[x]\\]");
     static const std::regex task_comment("^- (.+)");
     static const std::regex empty_line("^\\s*$");
 
@@ -35,6 +36,11 @@ void FileContainer::Parse() {
             continue;
         }
         if (std::regex_search(line, matches, task_name)) {
+            if (std::regex_search(line, ticked_task)) {
+                status_.push_back(true);
+            } else {
+                status_.push_back(false);
+            }
             tasks_.push_back(matches[1]);
             if (!firstTask) {
                 if (taskHasComments) {
@@ -77,3 +83,6 @@ const std::vector<std::string> &FileContainer::getComments() const {
     return comments_;
 }
 
+const std::deque<bool> &FileContainer::getStatus() const {
+    return status_;
+}
