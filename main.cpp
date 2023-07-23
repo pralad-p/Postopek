@@ -64,7 +64,7 @@ void HandleSavingEvent(const ApplicationMetaData &data) {
     }
     completeFileContent += "# " + *(data.task_header_ref) + "\n\n";
     for (size_t i = 0; i < data.checkbox_labels.size(); i++) {
-        completeFileContent += data.checkbox_statuses.at(i) ? "- [ ] " : "- [x] ";
+        completeFileContent += *(data.checkbox_statuses[i]) ? "- [x] " : "- [ ] ";
         completeFileContent += *data.checkbox_labels.at(i);
         completeFileContent += "\n";
         if (!(*data.checkbox_comments.at(i)).empty()) {
@@ -138,6 +138,9 @@ int main() {
     auto screen = ftxui::ScreenInteractive::Fullscreen();
     StateTracker &stateTracker = StateTracker::getInstance();
 
+    // Static constants
+    static const std::regex timestamp_regex("\\[[0-1][0-9]:[0-5][0-9] (AM|PM)\\]");
+
     // Read from config file
     std::vector<std::filesystem::path> mdPaths;
     std::vector<markdownFile_> markdowns;
@@ -206,8 +209,6 @@ int main() {
                | ftxui::border;
     });
 
-    static const std::regex timestamp_regex("\\[[0-1][0-9]:[0-5][0-9] (AM|PM)\\]");
-
     // Task UI
     auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::string {
         auto local_label = label;
@@ -244,6 +245,7 @@ int main() {
             markDownContainers = loadMarkdownContainers(markdowns);
             auto focused_file_container = markDownContainers.at(menu_selector);
             auto currentContainerSize = focused_file_container.getTasks().size();
+            auto startFreshOption = *(shouldStartFreshStatusFlags.at(menu_selector));
             checkbox_labels.clear();
             checkbox_comments.clear();
             checkbox_hovered_statuses.clear();
@@ -256,7 +258,7 @@ int main() {
                 checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
                 checkbox_comments.emplace_back(
                         std::make_shared<std::wstring>(convertToWideString(focused_file_container.getComments()[i])));
-                if (!*(shouldStartFreshStatusFlags.at(menu_selector))) {
+                if (!startFreshOption) {
                     // do not start fresh
                     checkbox_statuses.push_back(std::make_shared<bool>(focused_file_container.getStatus()[i]));
                 } else {
@@ -270,6 +272,15 @@ int main() {
                 auto checkbox_option = ftxui::CheckboxOption();
                 auto checkbox_status_ptr = checkbox_statuses[i];
                 auto label_ptr = checkbox_labels[i];
+                if (startFreshOption && label_ptr && label_ptr->length() > 0) {
+                    /* Start fresh and check if string has timestamp already
+                     * If is freshly started, replace timestamp with nothing
+                     */
+                    if (std::regex_search(*label_ptr, timestamp_regex)) {
+                        // Replace the pattern with an empty string
+                        *label_ptr = std::regex_replace(*label_ptr, timestamp_regex, "");
+                    }
+                }
                 auto iter_value_ptr = iteration_range_values[i];
                 auto checkbox_decorator = [label_ptr, checkbox_status_ptr, iter_value_ptr, &checkboxLabel](
                         const ftxui::EntryState &state) {
