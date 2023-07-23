@@ -42,26 +42,35 @@ std::string convertToHoursMinutes(const std::string &timeString) {
 }
 
 // trimStringInPlace from start
-static inline void ltrim(std::string &s) {
+inline void ltrim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
         return !isspace(ch);
     }));
 }
 
 // trimStringInPlace from end
-static inline void rtrim(std::string &s) {
+inline void rtrim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
         return !isspace(ch);
     }).base(), s.end());
 }
 
 // trimStringInPlace from both ends
-static inline void trimStringInPlace(std::string &s) {
+inline void trimStringInPlace(std::string &s) {
     ltrim(s);
     rtrim(s);
 }
 
-std::vector<std::filesystem::path> checkTempFileAndGetFiles() {
+size_t findPathIndex(const std::vector<std::filesystem::path> &paths, const std::filesystem::path &target) {
+    for (size_t i = 0; i < paths.size(); ++i) {
+        if (std::filesystem::equivalent(paths[i], target)) {
+            return i;
+        }
+    }
+    return -1; // Return -1 if the target path is not found
+}
+
+std::pair<std::vector<std::filesystem::path>, std::deque<bool>> checkTempFileAndGetFiles() {
     // Get the path to the TEMP folder
     auto tempFolderPath = std::filesystem::temp_directory_path();
     std::string config_file = "postopek_files.config";
@@ -79,6 +88,8 @@ std::vector<std::filesystem::path> checkTempFileAndGetFiles() {
         throw std::runtime_error("Failed to open file: " + configFilePath.string());
     }
     std::string line;
+    std::vector<std::filesystem::path> markdownFilePaths;
+    std::deque<bool> completelyNewFiles;
     while (std::getline(file, line)) {
         // Find the position of the '=' character
         size_t delimiterPos = line.find('=');
@@ -91,8 +102,6 @@ std::vector<std::filesystem::path> checkTempFileAndGetFiles() {
             // Check if the extracted key matches the desired key
             if (lineKey == "MARKDOWN_FILES_DIR") {
                 std::filesystem::path mdDirectoryPath = std::filesystem::path(lineValue);
-                std::vector<std::filesystem::path> markdownFilePaths;
-
                 for (const auto &entry: std::filesystem::directory_iterator(mdDirectoryPath)) {
                     if (entry.is_regular_file() && entry.path().extension() == ".md") {
                         markdownFilePaths.push_back(entry.path());
@@ -100,12 +109,17 @@ std::vector<std::filesystem::path> checkTempFileAndGetFiles() {
                 }
                 if (markdownFilePaths.empty()) {
                     throw std::runtime_error("No markdown files in directory!");
+                } else {
+                    completelyNewFiles.assign(markdownFilePaths.size(), true);
                 }
-                return markdownFilePaths;
+            } else if (lineKey == "FILE") {
+                auto visitedPath = std::filesystem::path(lineValue);
+                auto index = findPathIndex(markdownFilePaths, visitedPath);
+                completelyNewFiles[index] = false;
             }
         }
     }
-    return std::vector<std::filesystem::path>{};
+    return std::make_pair(markdownFilePaths, completelyNewFiles);
 }
 
 #pragma clang diagnostic pop

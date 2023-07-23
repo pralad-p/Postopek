@@ -6,6 +6,8 @@
 #define POSTOPEK_UTILITIES_H
 
 #include <locale>
+#include <utility>
+#include <deque>
 #include <chrono>
 #include <ctime>
 #include <codecvt>
@@ -21,12 +23,14 @@ std::wstring convertToWideString(const std::string &);
 
 std::string convertToHoursMinutes(const std::string &);
 
-static inline void ltrim(std::string &);
+inline void ltrim(std::string &);
 
-static inline void rtrim(std::string &);
+inline void rtrim(std::string &);
 
-static inline void trimStringInPlace(std::string &);
+inline void trimStringInPlace(std::string &);
 
-std::vector<std::filesystem::path> checkTempFileAndGetFiles();
+size_t findPathIndex(const std::vector<std::filesystem::path> &, const std::filesystem::path &);
+
+std::pair<std::vector<std::filesystem::path>, std::deque<bool>> checkTempFileAndGetFiles();
 
 #endif //POSTOPEK_UTILITIES_H
