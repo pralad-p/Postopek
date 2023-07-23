@@ -1,4 +1,3 @@
-{sf:yes}
 # Make Coffee
 
 - [ ] Get milk

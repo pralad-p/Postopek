@@ -1,4 +1,3 @@
-{sf:yes}
 # Make milkshakes
 
 - [ ] Get bananas
