@@ -206,14 +206,16 @@ int main() {
                | ftxui::border;
     });
 
-
-
+    static const std::regex timestamp_regex("\\[[0-1][0-9]:[0-5][0-9] (AM|PM)\\]");
 
     // Task UI
-    auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::wstring {
-        auto local_label = convertToWideString(label);
+    auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::string {
+        auto local_label = label;
+        if (std::regex_search(local_label, timestamp_regex)) {
+            return local_label;
+        }
         if (checkbox_status) {
-            std::wstring timeModded = L"[" + convertToWideString(convertToHoursMinutes(getCurrentTime())) + L"] ";
+            std::string timeModded = "[" + convertToHoursMinutes(getCurrentTime()) + "] ";
             local_label.insert(0, timeModded);
         }
         return local_label;
@@ -254,7 +256,13 @@ int main() {
                 checkbox_labels.emplace_back(std::make_shared<std::string>(focused_file_container.getTasks()[i]));
                 checkbox_comments.emplace_back(
                         std::make_shared<std::wstring>(convertToWideString(focused_file_container.getComments()[i])));
-                checkbox_statuses.push_back(std::make_shared<bool>(false));
+                if (!*(shouldStartFreshStatusFlags.at(menu_selector))) {
+                    // do not start fresh
+                    checkbox_statuses.push_back(std::make_shared<bool>(focused_file_container.getStatus()[i]));
+                } else {
+                    // start fresh
+                    checkbox_statuses.push_back(std::make_shared<bool>(false));
+                }
                 checkbox_hovered_statuses.push_back(std::make_shared<bool>(false));
                 iteration_range_values.push_back(std::make_shared<int>(i + 1));
             }
@@ -276,14 +284,18 @@ int main() {
                         base_style = base_style;
                     }
 
+                    label = checkboxLabel(label, checkbox_status);
                     return ftxui::hbox({
                                                ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
                                                ftxui::text(state.state ? L"✅" : L" ") | base_style,
                                                ftxui::text(L"] ") | base_style,
-                                               ftxui::text(checkboxLabel(label, checkbox_status)) | base_style,
+                                               ftxui::text(label) | base_style,
                                        });
                 };
                 checkbox_option.transform = checkbox_decorator;
+                checkbox_option.on_change = [&file_modified_flag]() {
+                    file_modified_flag = true;
+                };
                 auto cb = ftxui::Checkbox(checkbox_labels[i].get(), checkbox_statuses[i].get(), checkbox_option);
                 auto hoverable_cb = Hoverable(cb,
                                               [&, i]() { *checkbox_hovered_statuses[i] = true; },
@@ -409,11 +421,12 @@ int main() {
                     base_style = base_style;
                 }
 
+                label = checkboxLabel(label, checkbox_status);
                 return ftxui::hbox({
                                            ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
                                            ftxui::text(state.state ? L"✅" : L" ") | base_style,
                                            ftxui::text(L"] ") | base_style,
-                                           ftxui::text(checkboxLabel(label, checkbox_status)) | base_style,
+                                           ftxui::text(label) | base_style,
                                    });
             };
             checkbox_option.transform = checkbox_decorator;
