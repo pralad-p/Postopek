@@ -363,6 +363,28 @@ int main() {
                 auto hoverable_cb = Hoverable(cb,
                                               [&, i]() { *checkbox_hovered_statuses[i] = true; },
                                               [&, i]() { *checkbox_hovered_statuses[i] = false; });
+                // Create a new variable that holds the correct label_ptr for this iteration.
+                hoverable_cb |= ftxui::CatchEvent([&, i](ftxui::Event event) {
+                    if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Right &&
+                        event.mouse().motion == ftxui::Mouse::Released) {
+                        // modify label based on right mouse click
+                        auto &local_label = *checkbox_labels[i];
+                        if (local_label.find(u8"▶️") != std::string::npos) {
+                            // The string contains "▶️".
+                            size_t pos = local_label.find(u8"▶️");
+                            local_label.replace(pos, strlen(u8"▶️"), u8"⏸️");
+                        } else if (local_label.find(u8"⏸️") != std::string::npos) {
+                            // The string contains "⏸️".
+                            size_t pos = local_label.find(u8"⏸️");
+                            local_label.replace(pos, strlen(u8"⏸️"), "");
+                        } else {
+                            // The string contains neither "▶️" nor "⏸️".
+                            local_label.insert(0, u8"▶️");
+                        }
+                        return true;
+                    }
+                    return false;
+                });
                 taskComponentContainer->Add(hoverable_cb);
                 auto hovered_status_ptr = checkbox_hovered_statuses[i];
                 auto hover_text_ptr = checkbox_comments[i];
@@ -498,6 +520,26 @@ int main() {
             auto hoverable_cb = Hoverable(cb,
                                           [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = true; },
                                           [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = false; });
+            hoverable_cb |= ftxui::CatchEvent([&](ftxui::Event event) {
+                if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Right) {
+                    // modify label based on right mouse click
+                    auto &local_label = *label_ptr;
+                    if (local_label.find(u8"▶️") != std::string::npos) {
+                        // The string contains "▶️".
+                        size_t pos = local_label.find(u8"▶️");
+                        local_label.replace(pos, strlen(u8"▶️"), u8"⏸️");
+                    } else if (local_label.find(u8"⏸️") != std::string::npos) {
+                        // The string contains "⏸️".
+                        size_t pos = local_label.find(u8"⏸️");
+                        local_label.replace(pos, strlen(u8"⏸️"), "");
+                    } else {
+                        // The string contains neither "▶️" nor "⏸️".
+                        local_label.insert(0, u8"▶️");
+                    }
+                    return true;
+                }
+                return false;
+            });
             auto hovered_status_ptr = checkbox_hovered_statuses[taskNumber];
             auto hover_text_ptr = checkbox_comments[taskNumber];
             auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
