@@ -218,6 +218,8 @@ int main() {
     file_save_check_flag = false;
     auto &move_to_menu_save_flag = stateTracker.getMenuSaveFlagIndicator();
     move_to_menu_save_flag = false;
+    auto task_status_flag = std::make_shared<std::bitset<2>>(stateTracker.getTaskStatusFlagIndicator());
+    (*task_status_flag).reset();
     // UI Divisions
 
     // Menu related
@@ -334,7 +336,8 @@ int main() {
                 checkbox_option.on_change = on_change;
                 auto cb = ftxui::Checkbox(checkbox_labels[i].get(), checkbox_status[i].get(), checkbox_option);
                 auto cb_show_comment_status_ptr = checkbox_show_comment_status[i];
-                auto specialCb = std::make_shared<SpecialCheckbox>(cb, cb_show_comment_status_ptr, label_ptr);
+                auto specialCb = std::make_shared<SpecialCheckbox>(cb, cb_show_comment_status_ptr, label_ptr,
+                                                                   task_status_flag);
                 taskComponentContainer->Add(specialCb);
                 auto hover_text_ptr = checkbox_comments[i];
                 auto hover_text_renderer = ftxui::Renderer([cb_show_comment_status_ptr, hover_text_ptr]() {

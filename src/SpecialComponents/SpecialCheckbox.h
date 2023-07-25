@@ -13,12 +13,15 @@
 #include <sstream>
 #include <filesystem>
 #include <algorithm>
+#include <bitset>
 #include <utility>
 
 class SpecialCheckbox : public ftxui::ComponentBase {
 public:
-    SpecialCheckbox(ftxui::Component checkbox, std::shared_ptr<bool> state, std::shared_ptr<std::string> label)
-            : state_(std::move(state)), checkbox_(std::move(checkbox)), label_(std::move(label)) {
+    SpecialCheckbox(ftxui::Component checkbox, std::shared_ptr<bool> state, std::shared_ptr<std::string> label,
+                    std::shared_ptr<std::bitset<2>> task_status)
+            : state_(std::move(state)), checkbox_(std::move(checkbox)), label_(std::move(label)),
+              task_status_flag_(std::move(task_status)) {
     }
 
     ftxui::Element Render() override;
@@ -33,6 +36,7 @@ private:
     std::shared_ptr<std::string> label_;
     bool hovered_ = false;
     ftxui::Box box_;
+    std::shared_ptr<std::bitset<2>> task_status_flag_;
 };
 
 #endif //POSTOPEK_SPECIALCHECKBOX_H
