@@ -428,7 +428,7 @@ int main() {
     std::wstring hover_text;
     auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
             &checkbox_labels, &taskComponentContainer, &checkbox_show_comment_status,
-            &checkbox_status, &incorrect_input_indicator, &file_modified_flag] {
+            &checkbox_status, &incorrect_input_indicator, &file_modified_flag, &task_status_flag] {
         std::regex newTaskPattern("<!add-new-task-(\\d+)>:\\s*(.*)");
         std::regex newCommentPattern("<!add-new-comment-(\\d+)>:\\s*(.*)");
         std::regex changeTaskPattern("<!change-task-(\\d+)>:\\s*(.*)");
@@ -465,33 +465,12 @@ int main() {
             };
             auto cb = ftxui::Checkbox(checkbox_labels[taskNumber].get(), checkbox_status[taskNumber].get(),
                                       checkbox_option);
-            auto hoverable_cb = Hoverable(cb,
-                                          [&, taskNumber]() { *checkbox_show_comment_status[taskNumber] = true; },
-                                          [&, taskNumber]() { *checkbox_show_comment_status[taskNumber] = false; });
-            hoverable_cb |= ftxui::CatchEvent([&](ftxui::Event event) {
-                if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Right) {
-                    // modify label based on right mouse click
-                    auto &local_label = *label_ptr;
-                    if (local_label.find(u8"▶️") != std::string::npos) {
-                        // The string contains "▶️".
-                        size_t pos = local_label.find(u8"▶️");
-                        local_label.replace(pos, strlen(u8"▶️"), u8"⏸️");
-                    } else if (local_label.find(u8"⏸️") != std::string::npos) {
-                        // The string contains "⏸️".
-                        size_t pos = local_label.find(u8"⏸️");
-                        local_label.replace(pos, strlen(u8"⏸️"), "");
-                    } else {
-                        // The string contains neither "▶️" nor "⏸️".
-                        local_label.insert(0, u8"▶️");
-                    }
-                    return true;
-                }
-                return false;
-            });
-            auto hovered_status_ptr = checkbox_show_comment_status[taskNumber];
+            auto cb_show_comment_status_ptr = checkbox_show_comment_status[taskNumber];
+            auto specialCb = std::make_shared<SpecialCheckbox>(cb, cb_show_comment_status_ptr, label_ptr,
+                                                               task_status_flag);
             auto hover_text_ptr = checkbox_comments[taskNumber];
-            auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
-                auto &hovered_status = *hovered_status_ptr;
+            auto hover_text_renderer = ftxui::Renderer([cb_show_comment_status_ptr, hover_text_ptr]() {
+                auto &hovered_status = *cb_show_comment_status_ptr;
                 auto &hover_text = *hover_text_ptr;
                 if (hovered_status) {
                     // Convert hover_text from std::wstring to std::string.
@@ -515,7 +494,7 @@ int main() {
                 }
             });
             if (taskNumber + 1 == checkbox_labels.size()) {
-                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer.get()->Add(specialCb);
                 taskComponentContainer.get()->Add(hover_text_renderer);
             } else {
                 int PREVIOUS_COMPONENT_SIZE = 1;
@@ -526,7 +505,7 @@ int main() {
                     postTaskComponents.push_back(taskComponentContainer.get()->ChildAt(backIteratorIndex));
                     taskComponentContainer.get()->ChildAt(backIteratorIndex)->Detach();
                 }
-                taskComponentContainer.get()->Add(hoverable_cb);
+                taskComponentContainer.get()->Add(specialCb);
                 taskComponentContainer.get()->Add(hover_text_renderer);
                 for (const auto &comp: postTaskComponents) {
                     taskComponentContainer.get()->Add(comp);
