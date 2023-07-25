@@ -262,18 +262,6 @@ int main() {
     });
 
     // Task UI
-    auto checkboxLabel = [&](const std::string &label, bool checkbox_status) -> std::string {
-        auto local_label = label;
-        if (std::regex_search(local_label, timestamp_regex)) {
-            return local_label;
-        }
-        if (checkbox_status) {
-            std::string timeModded = "[" + convertToHoursMinutes(getCurrentTime()) + "] ";
-            local_label.insert(0, timeModded);
-        }
-        return local_label;
-    };
-
     auto taskComponentContainer = ftxui::Container::Vertical({});
     std::shared_ptr<std::string> task_header;
 
@@ -285,7 +273,7 @@ int main() {
 
     std::vector<std::shared_ptr<std::string>> checkbox_labels;
     std::vector<std::shared_ptr<std::wstring>> checkbox_comments;
-    std::vector<std::shared_ptr<bool>> checkbox_statuses, checkbox_hovered_statuses;
+    std::vector<std::shared_ptr<bool>> checkbox_statuses, checkbox_show_comment_status;
     std::vector<std::shared_ptr<int>> iteration_range_values;
 
     // Define the callback function
@@ -300,7 +288,7 @@ int main() {
             auto startFreshOption = *(shouldStartFreshStatusFlags.at(menu_selector));
             checkbox_labels.clear();
             checkbox_comments.clear();
-            checkbox_hovered_statuses.clear();
+            checkbox_show_comment_status.clear();
             iteration_range_values.clear();
             checkbox_statuses.clear();
             task_header = std::make_shared<std::string>(focused_file_container.getHeader());
@@ -317,7 +305,7 @@ int main() {
                     // start fresh
                     checkbox_statuses.push_back(std::make_shared<bool>(false));
                 }
-                checkbox_hovered_statuses.push_back(std::make_shared<bool>(false));
+                checkbox_show_comment_status.push_back(std::make_shared<bool>(false));
                 iteration_range_values.push_back(std::make_shared<int>(i + 1));
             }
             for (i = 0; i < currentContainerSize; i++) {
@@ -334,35 +322,17 @@ int main() {
                     }
                 }
                 auto iter_value_ptr = iteration_range_values[i];
-                auto checkbox_decorator = [label_ptr, checkbox_status_ptr, iter_value_ptr, &checkboxLabel](
-                        const ftxui::EntryState &state) {
-                    auto &label = *label_ptr;
-                    auto &checkbox_status = *checkbox_status_ptr;
-                    auto &iter_value = *iter_value_ptr;
-                    std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
-                                                                                              : ftxui::nothing;
-                    if (state.state) {
-                        base_style = base_style | color(ftxui::Color::Green);
-                    } else {
-                        base_style = base_style;
-                    }
-
-                    label = checkboxLabel(label, checkbox_status);
-                    return ftxui::hbox({
-                                               ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
-                                               ftxui::text(state.state ? L"✅" : L" ") | base_style,
-                                               ftxui::text(L"] ") | base_style,
-                                               ftxui::text(label) | base_style,
-                                       });
+                checkbox_option.transform = [label_ptr, checkbox_status_ptr, iter_value_ptr](auto &&PH1) {
+                    return CheckboxDecorator(label_ptr, checkbox_status_ptr, iter_value_ptr,
+                                             std::forward<decltype(PH1)>(PH1));
                 };
-                checkbox_option.transform = checkbox_decorator;
                 checkbox_option.on_change = [&file_modified_flag]() {
                     file_modified_flag = true;
                 };
                 auto cb = ftxui::Checkbox(checkbox_labels[i].get(), checkbox_statuses[i].get(), checkbox_option);
                 auto hoverable_cb = Hoverable(cb,
-                                              [&, i]() { *checkbox_hovered_statuses[i] = true; },
-                                              [&, i]() { *checkbox_hovered_statuses[i] = false; });
+                                              [&, i]() { *checkbox_show_comment_status[i] = true; },
+                                              [&, i]() { *checkbox_show_comment_status[i] = false; });
                 // Create a new variable that holds the correct label_ptr for this iteration.
                 hoverable_cb |= ftxui::CatchEvent([&, i](ftxui::Event event) {
                     if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Right &&
@@ -386,7 +356,7 @@ int main() {
                     return false;
                 });
                 taskComponentContainer->Add(hoverable_cb);
-                auto hovered_status_ptr = checkbox_hovered_statuses[i];
+                auto hovered_status_ptr = checkbox_show_comment_status[i];
                 auto hover_text_ptr = checkbox_comments[i];
                 auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
                     auto &hovered_status = *hovered_status_ptr;
@@ -461,8 +431,8 @@ int main() {
     auto input_component = ftxui::Input(content.get(), "Enter text...", &input_option);
     std::wstring hover_text;
     auto onUpdate = [&content, &iteration_range_values, &checkbox_comments,
-            &checkbox_labels, &taskComponentContainer, &checkbox_hovered_statuses,
-            &checkbox_statuses, &checkboxLabel, &incorrect_input_indicator, &file_modified_flag] {
+            &checkbox_labels, &taskComponentContainer, &checkbox_show_comment_status,
+            &checkbox_statuses, &incorrect_input_indicator, &file_modified_flag] {
         std::regex newTaskPattern("<!add-new-task-(\\d+)>:\\s*(.*)");
         std::regex newCommentPattern("<!add-new-comment-(\\d+)>:\\s*(.*)");
         std::regex changeTaskPattern("<!change-task-(\\d+)>:\\s*(.*)");
@@ -476,8 +446,8 @@ int main() {
             checkbox_labels.insert(checkbox_labels.begin() + taskNumber, std::make_shared<std::string>(newTaskContent));
             checkbox_comments.insert(checkbox_comments.begin() + taskNumber, std::make_shared<std::wstring>());
             checkbox_statuses.insert(checkbox_statuses.begin() + taskNumber, std::make_shared<bool>(false));
-            checkbox_hovered_statuses.insert(checkbox_hovered_statuses.begin() + taskNumber,
-                                             std::make_shared<bool>(false));
+            checkbox_show_comment_status.insert(checkbox_show_comment_status.begin() + taskNumber,
+                                                std::make_shared<bool>(false));
             if (taskNumber == checkbox_labels.size() - 1) {
                 iteration_range_values.push_back(
                         std::make_shared<int>(iteration_range_values.size() + 1));
@@ -493,33 +463,15 @@ int main() {
             auto checkbox_status_ptr = checkbox_statuses[taskNumber];
             auto label_ptr = checkbox_labels[taskNumber];
             auto iter_value_ptr = iteration_range_values[taskNumber];
-            auto checkbox_decorator = [label_ptr, checkbox_status_ptr, iter_value_ptr, &checkboxLabel](
-                    const ftxui::EntryState &state) {
-                auto &label = *label_ptr;
-                auto &checkbox_status = *checkbox_status_ptr;
-                auto &iter_value = *iter_value_ptr;
-                std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
-                                                                                          : ftxui::nothing;
-                if (state.state) {
-                    base_style = base_style | color(ftxui::Color::Green);
-                } else {
-                    base_style = base_style;
-                }
-
-                label = checkboxLabel(label, checkbox_status);
-                return ftxui::hbox({
-                                           ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
-                                           ftxui::text(state.state ? L"✅" : L" ") | base_style,
-                                           ftxui::text(L"] ") | base_style,
-                                           ftxui::text(label) | base_style,
-                                   });
+            checkbox_option.transform = [label_ptr, checkbox_status_ptr, iter_value_ptr](auto &&PH1) {
+                return CheckboxDecorator(label_ptr, checkbox_status_ptr, iter_value_ptr,
+                                         std::forward<decltype(PH1)>(PH1));
             };
-            checkbox_option.transform = checkbox_decorator;
             auto cb = ftxui::Checkbox(checkbox_labels[taskNumber].get(), checkbox_statuses[taskNumber].get(),
                                       checkbox_option);
             auto hoverable_cb = Hoverable(cb,
-                                          [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = true; },
-                                          [&, taskNumber]() { *checkbox_hovered_statuses[taskNumber] = false; });
+                                          [&, taskNumber]() { *checkbox_show_comment_status[taskNumber] = true; },
+                                          [&, taskNumber]() { *checkbox_show_comment_status[taskNumber] = false; });
             hoverable_cb |= ftxui::CatchEvent([&](ftxui::Event event) {
                 if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Right) {
                     // modify label based on right mouse click
@@ -540,7 +492,7 @@ int main() {
                 }
                 return false;
             });
-            auto hovered_status_ptr = checkbox_hovered_statuses[taskNumber];
+            auto hovered_status_ptr = checkbox_show_comment_status[taskNumber];
             auto hover_text_ptr = checkbox_comments[taskNumber];
             auto hover_text_renderer = ftxui::Renderer([hovered_status_ptr, hover_text_ptr]() {
                 auto &hovered_status = *hovered_status_ptr;
