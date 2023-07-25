@@ -26,10 +26,10 @@ bool SpecialCheckbox::OnMouseEvent(ftxui::Event event) {
     // task_status_flag_[0] -> ▶️, task_status_flag_[1] -> ⏸️
     hovered_ = box_.Contain(event.mouse().x, event.mouse().y);
     if (!CaptureMouse(event)) {
-        return false;
+        return checkbox_->OnEvent(event);
     }
     if (!hovered_) {
-        return false;
+        return checkbox_->OnEvent(event);
     }
     if (event.mouse().button == ftxui::Mouse::Right &&
         event.mouse().motion == ftxui::Mouse::Pressed) {
@@ -63,6 +63,6 @@ bool SpecialCheckbox::OnMouseEvent(ftxui::Event event) {
         *state_ = !(*state_);
         return true;
     }
-    return false;
+    return checkbox_->OnEvent(event);
 }
 

@@ -56,7 +56,11 @@ typedef struct markdownFile_ {
  */
 void HandleSavingEvent(const ApplicationMetaData &data) {
     static const std::regex startingCommentPrefix("^\\s*=>");
+    static const std::regex play_symbol(u8"▶️");
+    static const std::regex pause_symbol(u8"⏸️");
     std::string completeFileContent;
+    std::string taskLabel;
+    bool foundTaskStatus = false;
     auto filePathToSave = data.filePath;
     std::ofstream fileOutputStream(filePathToSave, std::ios::out);
     if (!fileOutputStream) {
@@ -66,7 +70,17 @@ void HandleSavingEvent(const ApplicationMetaData &data) {
     completeFileContent += "# " + *(data.task_header_ref) + "\n\n";
     for (size_t i = 0; i < data.checkbox_labels.size(); i++) {
         completeFileContent += *(data.checkbox_statuses[i]) ? "- [x] " : "- [ ] ";
-        completeFileContent += *data.checkbox_labels.at(i);
+        taskLabel = *data.checkbox_labels.at(i);
+        if (!foundTaskStatus) {
+            if (std::regex_search(taskLabel, play_symbol)) {
+                taskLabel = std::regex_replace(taskLabel, play_symbol, "");
+                foundTaskStatus = true;
+            } else if (std::regex_search(taskLabel, pause_symbol)) {
+                taskLabel = std::regex_replace(taskLabel, pause_symbol, "");
+                foundTaskStatus = true;
+            }
+        }
+        completeFileContent += taskLabel;
         completeFileContent += "\n";
         if (!(*data.checkbox_comments.at(i)).empty()) {
             auto comment = convertToStandardString(*data.checkbox_comments.at(i));
