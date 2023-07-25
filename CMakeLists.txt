@@ -30,6 +30,7 @@ set(SOURCES
         src/Utilities.cpp
         src/ValidationCheck.cpp
         src/MarkdownParser.cpp
+        src/SpecialComponents/SpecialCheckbox.cpp
         )
 
 set(HEADERS
@@ -38,6 +39,7 @@ set(HEADERS
         src/WindowsUtilities.h
         src/StateTracker.h
         src/MarkdownParser.h
+        src/SpecialComponents/SpecialCheckbox.h
         )
 
 add_executable(Postopek)

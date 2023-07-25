@@ -122,4 +122,41 @@ std::pair<std::vector<std::filesystem::path>, std::deque<bool>> checkTempFileAnd
     return std::make_pair(markdownFilePaths, completelyNewFiles);
 }
 
+std::string checkboxLabel(const std::string &label, bool checkbox_status) {
+    static const std::regex timestamp_regex("\\[[0-1][0-9]:[0-5][0-9] (AM|PM)\\]");
+    auto local_label = label;
+    if (std::regex_search(local_label, timestamp_regex)) {
+        return local_label;
+    }
+    if (checkbox_status) {
+        std::string timeModded = "[" + convertToHoursMinutes(getCurrentTime()) + "] ";
+        local_label.insert(0, timeModded);
+    }
+    return local_label;
+}
+
+ftxui::Element CheckboxDecorator(const std::shared_ptr<std::string> &label_ptr,
+                                 const std::shared_ptr<bool> &checkbox_status_ptr,
+                                 const std::shared_ptr<int> &iter_value_ptr,
+                                 const ftxui::EntryState &state) {
+    auto &label = *label_ptr;
+    auto &checkbox_status = *checkbox_status_ptr;
+    auto &iter_value = *iter_value_ptr;
+    std::function < ftxui::Element(ftxui::Element) > base_style = state.state ? ftxui::inverted
+                                                                              : ftxui::nothing;
+    if (state.state) {
+        base_style = base_style | color(ftxui::Color::Green);
+    } else {
+        base_style = base_style;
+    }
+
+    label = checkboxLabel(label, checkbox_status);
+    return ftxui::hbox({
+                               ftxui::text(std::to_wstring(iter_value) + L". [") | base_style,
+                               ftxui::text(state.state ? L"✅" : L" ") | base_style,
+                               ftxui::text(L"] ") | base_style,
+                               ftxui::text(label) | base_style,
+                       });
+}
+
 #pragma clang diagnostic pop

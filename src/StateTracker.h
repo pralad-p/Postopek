@@ -4,6 +4,7 @@
 
 #ifndef POSTOPEK_STATETRACKER_H
 #define POSTOPEK_STATETRACKER_H
+#include <bitset>
 
 
 class StateTracker {
@@ -44,6 +45,10 @@ public:
     bool &getMenuSaveFlagIndicator() {
         return show_return_menu_flag_;
     }
+
+    std::bitset<2> &getTaskStatusFlagIndicator() {
+        return show_only_one_task_status_flag_;
+    }
     // Add more state variables and corresponding accessor/mutator methods as needed
 
 
@@ -51,10 +56,11 @@ public:
     StateTracker &operator=(const StateTracker &) = delete; // Disable assignment operator
 private:
     StateTracker() = default; // Private constructor to prevent direct instantiation
-    int menu_selector_;
-    int focus_selector_;
-    bool show_saved_status_, show_parse_status_, show_input_valid_status_, show_modified_flag_, show_confirm_quit_flag_;
-    bool show_return_menu_flag_;
+    int menu_selector_{};
+    int focus_selector_{};
+    bool show_saved_status_{}, show_parse_status_{}, show_input_valid_status_{}, show_modified_flag_{}, show_confirm_quit_flag_{};
+    bool show_return_menu_flag_{};
+    std::bitset<2> show_only_one_task_status_flag_;
     // Add more state variables here
 };
 
