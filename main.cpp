@@ -154,6 +154,35 @@ void HandleSavingEvent(const ApplicationMetaData &data) {
     }
 }
 
+void removeLineWithFilePath(const std::string &opened_file) {
+    // Get the path to the TEMP folder
+    auto tempFolderPath = std::filesystem::temp_directory_path();
+    std::string config_file = "postopek_files.config";
+    // Construct the full path to the file in the TEMP folder
+    std::filesystem::path configFilePath = tempFolderPath / config_file;
+
+    std::ifstream file_in(configFilePath);
+    std::vector<std::string> lines;
+    std::string line_basic;
+
+    if (file_in.is_open()) {
+        while (std::getline(file_in, line_basic)) {
+            if (line_basic.find(opened_file) != std::string::npos) {
+                // found file path to remove
+                continue;
+            }
+            lines.push_back(line_basic);
+        }
+        file_in.close();
+    }
+    std::ofstream file_out(configFilePath);
+    if (file_out.is_open()) {
+        for (const auto &line: lines) {
+            file_out << line << "\n";
+        }
+        file_out.close();
+    }
+}
 
 std::vector<FileContainer> loadMarkdownContainers(std::vector<markdownFile> &markdowns) {
     std::vector<FileContainer> containers;
@@ -210,9 +239,9 @@ int main() {
     std::vector<std::filesystem::path> mdPaths;
     std::vector<markdownFile_> markdowns;
     std::vector<FileContainer> markDownContainers;
-    std::deque<bool> previouslySeenFiles;
+    std::deque<bool> previouslyUnseenFiles;
 
-    std::tie(mdPaths, previouslySeenFiles) = checkTempFileAndGetFiles();
+    std::tie(mdPaths, previouslyUnseenFiles) = checkTempFileAndGetFiles();
     markdowns = getMarkdownVector(mdPaths);
 
     // Variables
@@ -249,7 +278,7 @@ int main() {
         menuEntries.push_back(mdStruct.fileName);
         statusFlags.push_back(mdStruct.isParseable);
         // by default, start fresh
-        shouldStartFreshStatusFlags.push_back(std::make_shared<bool>(previouslySeenFiles[i]));
+        shouldStartFreshStatusFlags.push_back(std::make_shared<bool>(previouslyUnseenFiles[i]));
         auto status = ftxui::Renderer([&mdStruct] {
             if (mdStruct.isParseable) {
                 return ftxui::text("🟢");
@@ -763,6 +792,12 @@ int main() {
                     inSaveCheckState = true;
                     return true;
                 } else {
+                    auto currentSetConfigFlag = *(shouldStartFreshStatusFlags.at(menu_selector));
+                    if (currentSetConfigFlag) {
+                        // Quit without saving but recently started fresh
+                        auto filePathToRemove = mdPaths.at(menu_selector).string();
+                        removeLineWithFilePath(filePathToRemove);
+                    }
                     quitMethod();
                 }
             }

@@ -11,7 +11,7 @@ FileContainer::FileContainer(const std::filesystem::path &p) {
 
 void FileContainer::Parse() {
     static const std::regex header("^# (.+)");
-    static const std::regex task_name("^- \\[[x ]\\](.+)");
+    static const std::regex task_name("^- \\[[x ]\\] (.+)");
     static const std::regex ticked_task("^- \\[[x]\\]");
     static const std::regex task_comment("^- (.+)");
     static const std::regex empty_line("^\\s*$");
