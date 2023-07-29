@@ -125,12 +125,14 @@ std::pair<std::vector<std::filesystem::path>, std::deque<bool>> checkTempFileAnd
 std::string checkboxLabel(const std::string &label, bool checkbox_status) {
     static const std::regex timestamp_regex("\\[[0-1][0-9]:[0-5][0-9] (AM|PM)\\]");
     auto local_label = label;
-    if (std::regex_search(local_label, timestamp_regex)) {
-        return local_label;
-    }
     if (checkbox_status) {
-        std::string timeModded = "[" + convertToHoursMinutes(getCurrentTime()) + "] ";
+        if (std::regex_search(local_label, timestamp_regex)) return local_label;
+        std::string timeModded = "[" + convertToHoursMinutes(getCurrentTime()) + "]";
         local_label.insert(0, timeModded);
+    } else {
+        if (std::regex_search(local_label, timestamp_regex)) {
+            local_label = std::regex_replace(local_label, timestamp_regex, "");
+        }
     }
     return local_label;
 }
