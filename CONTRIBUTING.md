@@ -26,7 +26,6 @@ Your patch should follow the same conventions & pass the same code quality check
 At this point, you should switch back to your master branch and make sure it's up to date with the latest code from the main repository:
 
 ```sh
-Copy code
 git remote add upstream git@github.com:pralad-p/Postopek.git
 git checkout master
 git pull upstream master
@@ -40,7 +39,7 @@ git rebase master
 git push --set-upstream origin 325-condense-downloads-page
 ```
 
-Finally, go to GitHub and make a Pull Request :D
+Finally, go to GitHub and make a Pull Request 👍
 
 ## Keeping your Pull Request updated
 If a maintainer asks you to "rebase" your PR, they're saying that a lot of code has changed, and that you need to update your branch so it's easier to merge.
