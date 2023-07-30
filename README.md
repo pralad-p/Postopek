@@ -11,14 +11,54 @@ time-tracking feature. It was made to be minimalist and allows to focus on one t
 - [Usage](#usage)
 - [Project Structure](#project-structure)
 - [Features](#features)
-- [Configuration](#configuration)
 - [Contributing](#contributing)
 
 ## Installation
 
-*To be done*
+### Prerequisites
 
-(Talk about how to install your project, any pre-requisites that need to be installed, and any environment setup steps)
+- CMake (version 3.16 or higher)
+- A C++ compiler that supports C++17
+- Git
+- PowerShell (7 preferably) with admin privileges
+
+### Building from Source
+
+1. Clone the repository to your local machine:
+
+```bash
+git clone https://github.com/pralad-p/Postopek.git
+```
+
+2. Navigate to the project directory:
+
+```bash
+cd Postopek
+```
+
+3. Create a new directory for the build:
+
+```bash
+mkdir build
+```
+
+4. Navigate to the build directory:
+
+```bash
+cd build
+```
+
+5. Run CMake to generate the Makefile:
+
+```bash
+cmake ..
+```
+
+6. Build the project:
+
+```bash
+make
+```
 
 ## Usage
 
@@ -48,14 +88,6 @@ The project is structured as follows:
   as well.
 - Text points: Added texts are in the form of points.
 
-## Configuration
-
-*(To be completed)*
-
-(Talk about how to configure the application, if applicable)
-
 ## Contributing
 
-*(To be completed)*
-
-(Provide instructions on how others can contribute to your project)
+New contributors and/or feature requesters can view [the guide](./CONTRIBUTING.md). 
