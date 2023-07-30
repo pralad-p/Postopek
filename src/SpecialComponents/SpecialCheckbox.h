@@ -11,6 +11,7 @@
 #include "ftxui/component/component_options.hpp"
 #include "Utilities.h"
 #include <sstream>
+#include <cstring>
 #include <filesystem>
 #include <algorithm>
 #include <bitset>
