@@ -21,7 +21,7 @@ if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif ()
 
-project(Postopek)
+project(Postopek VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 
